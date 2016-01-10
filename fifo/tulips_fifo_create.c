@@ -22,5 +22,7 @@ tulips_fifo_create(const size_t depth, const size_t dlen,
   }
   memset(data, 0, payload);
   *res = (tulips_fifo_t)data;
+  (*res)->depth = depth;
+  (*res)->data_len = dlen;
   return TULIPS_FIFO_OK;
 }
