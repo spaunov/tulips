@@ -35,7 +35,7 @@ import ycm_core
 # compilation database set (by default, one is not set).
 # CHANGE THIS LIST OF FLAGS. YES, THIS IS THE DROID YOU HAVE BEEN LOOKING FOR.
 flags = [
-        '-DACE_VERSION="0.0.0"',
+        '-DTULIP_VERSION="0.0.0"',
         '-Wall',
         '-Wextra',
         '-Werror',
@@ -43,7 +43,7 @@ flags = [
         '-x',
         'c',
         '-I',
-        '.',
+        '..',
         '-isystem',
         '/usr/include',
         '-isystem',

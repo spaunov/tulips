@@ -1,0 +1,7 @@
+include_rules
+
+ARLIBS  += ../fifo/lib.a
+
+: foreach *.cpp          |> !cxx |>
+: *.o    | ../fifo/<lib> |> !ld  |> tests
+: tests                  |> !tst |>

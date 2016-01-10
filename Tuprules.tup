@@ -1,0 +1,20 @@
+export WORKSPACE
+
+PRJNAM    = tulips
+VERSION   += `git describe --tags --match="tulips_v*" | cut -d - -f 1 | sed 's/tulips_v//'`
+
+CFLAGS    += -Wall -Werror -Wextra -Wfatal-errors -Wdeprecated
+CFLAGS    += -fPIC -std=c99 -pipe
+CFLAGS    += -I $WORKSPACE/$(PRJNAM)
+CFLAGS    += -DACE_VERSION=\"$(VERSION)\"
+CFLAGS    += @(VARIANT_CFLAGS)
+
+CXXFLAGS  += -Wall -Werror -Wextra -Wfatal-errors -Wdeprecated
+CXXFLAGS  += -fPIC -std=c++11 -pipe
+CXXFLAGS  += -I $WORKSPACE/$(PRJNAM)
+CXXFLAGS  += -DACE_VERSION=\"$(VERSION)\"
+CXXFLAGS  += @(VARIANT_CXXFLAGS)
+
+!cc       = |> ^c CC  %f^ @(VARIANT_CC) $(CFLAGS) -c %f -o %o     |> %B.o
+!cxx      = |> ^c CC  %f^ @(VARIANT_CXX) $(CXXFLAGS) -c %f -o %o  |> %B.o
+!ar       = |> ^c AR  %o^ ar rc %o %f                             |>
