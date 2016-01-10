@@ -1,0 +1,4 @@
+LDFLAGS += -std=c99 -fuse-ld=gold
+LDLIBS  += 
+
+!ld   = |> ^  LD  %o^ @(VARIANT_CC) $(LDFLAGS) -o %o %f $(ARLIBS) $(LDLIBS) |>

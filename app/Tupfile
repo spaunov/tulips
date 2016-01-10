@@ -1,0 +1,7 @@
+include_rules
+
+ARLIBS  += ../fifo/lib.a
+ARLIBS  += ../uip/lib.a
+
+: foreach *.c                         |> !cc |>
+: *.o    | ../fifo/<lib> ../uip/<lib> |> !ld  |> app
