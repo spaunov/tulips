@@ -1,5 +1,5 @@
-LDFLAGS += -std=c++11 -fuse-ld=gold
+LDFLAGS += -std=c++11 -fuse-ld=gold -pthread
 LDLIBS  += -lgtest
 
-!ld   = |> ^  LD  %o^ @(VARIANT_CXX) $(LDFLGS) -o %o %f $(ARLIBS) $(LDLIBS) |>
+!ld   = |> ^  LD  %o^ @(VARIANT_CXX) $(LDFLAGS) -o %o %f $(ARLIBS) $(LDLIBS) |>
 !tst  = |> ^  TST %f^ valgrind --leak-check=full --show-leak-kinds=all ./%f |>

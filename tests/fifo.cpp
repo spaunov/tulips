@@ -4,6 +4,39 @@
 
 #include <fifo/fifo.h>
 #include <gtest/gtest.h>
+#include <thread>
+
+namespace {
+
+#define ITERATIONS 1000
+
+static void reader_thread(tulips_fifo_t fifo) {
+  uint64_t data = 1;
+  void * result = NULL;
+  tulips_fifo_error_t error;
+  for (size_t i = 0; i < ITERATIONS; i += 1) {
+    do {
+      error = tulips_fifo_front(fifo, &result);
+    } while (error != TULIPS_FIFO_OK);
+    ASSERT_EQ(data, *(uint64_t *)result);
+    error = tulips_fifo_pop(fifo);
+    ASSERT_EQ(TULIPS_FIFO_OK, error);
+    data += 1;
+  }
+}
+
+static void writer_thread(tulips_fifo_t fifo) {
+  uint64_t data = 1;
+  tulips_fifo_error_t error;
+  for (size_t i = 0; i < ITERATIONS; i += 1) {
+    do {
+      error = tulips_fifo_push(fifo, &data);
+    } while (error != TULIPS_FIFO_OK);
+    data += 1;
+  }
+}
+
+}  // namespace
 
 TEST(FIFO, CreateAndDestroy) {
   tulips_fifo_t fifo = TULIPS_FIFO_DEFAULT_VALUE;
@@ -114,9 +147,6 @@ TEST(FIFO, FullEmpty) {
   error = tulips_fifo_create(16, 16, &fifo);
   ASSERT_EQ(TULIPS_FIFO_OK, error);
   /**
-   * Front failure
-   */
-  /**
    * Push success
    */
   const char * data = "hi to the world!";
@@ -124,6 +154,11 @@ TEST(FIFO, FullEmpty) {
     error = tulips_fifo_push(fifo, data);
     ASSERT_EQ(TULIPS_FIFO_OK, error);
   }
+  /**
+   * Push failure
+   */
+  error = tulips_fifo_push(fifo, data);
+  ASSERT_EQ(TULIPS_FIFO_FULL, error);
   /**
    * Front and pop success
    */
@@ -143,6 +178,36 @@ TEST(FIFO, FullEmpty) {
   ASSERT_EQ(0, memcmp(result, data, 16));
   error = tulips_fifo_pop(fifo);
   ASSERT_EQ(TULIPS_FIFO_EMPTY, error);
+  /*
+   * Empty success
+   */
+  error = tulips_fifo_empty(fifo);
+  ASSERT_EQ(TULIPS_FIFO_OK, error);
+  /**
+   * Destroy success
+   */
+  error = tulips_fifo_destroy(&fifo);
+  ASSERT_EQ(TULIPS_FIFO_OK, error);
+}
+
+TEST(FIFO, MultiThread) {
+  tulips_fifo_t fifo = TULIPS_FIFO_DEFAULT_VALUE;
+  tulips_fifo_error_t error;
+  /**
+   * Create success
+   */
+  error = tulips_fifo_create(16, sizeof(uint64_t), &fifo);
+  ASSERT_EQ(TULIPS_FIFO_OK, error);
+  /*
+   * Start the threads
+   */
+  std::thread t1(reader_thread, fifo);
+  std::thread t0(writer_thread, fifo);
+  /*
+   * Join the threads
+   */
+  t0.join();
+  t1.join();
   /*
    * Empty success
    */
