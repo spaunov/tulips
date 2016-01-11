@@ -85,22 +85,12 @@
 
 static const uip_ipaddr_t all_zeroes_addr = {0x0000,0x0000};
 
-void uip_setipid(uip_t uip, uint16_t id) {
-  uip->ipid = id;
-}
-
-/* Temporary variables. */
-uint8_t uip_acc32[4];
-static uint8_t c, opt;
-static uint16_t tmp16;
-
 /* Macros. */
 #define BUF(uip)      ((struct uip_tcpip_hdr *)&uip->buf[UIP_LLH_LEN])
 #define FBUF(uip)     ((struct uip_tcpip_hdr *)&uip->reassbuf[0])
 #define ICMPBUF(uip)  ((struct uip_icmpip_hdr *)&uip->buf[UIP_LLH_LEN])
 
 #if UIP_STATISTICS == 1
-struct uip_stats uip_stat;
 #define UIP_STAT(s) s
 #else
 #define UIP_STAT(s)
@@ -114,35 +104,37 @@ void uip_log(char *msg);
 #define UIP_LOG(m)
 #endif /* UIP_LOGGING == 1 */
 
+/*---------------------------------------------------------------------------*/
+void uip_setipid(uip_t uip, uint16_t id) {
+  uip->ipid = id;
+}
+/*---------------------------------------------------------------------------*/
 #if ! UIP_ARCH_ADD32
-
 void
-uip_add32(uint8_t *op32, uint16_t op16)
+uip_add32(uip_t uip, uint8_t *op32, uint16_t op16)
 {
-  uip_acc32[3] = op32[3] + (op16 & 0xff);
-  uip_acc32[2] = op32[2] + (op16 >> 8);
-  uip_acc32[1] = op32[1];
-  uip_acc32[0] = op32[0];
+  uip->acc32[3] = op32[3] + (op16 & 0xff);
+  uip->acc32[2] = op32[2] + (op16 >> 8);
+  uip->acc32[1] = op32[1];
+  uip->acc32[0] = op32[0];
 
-  if(uip_acc32[2] < (op16 >> 8)) {
-    ++uip_acc32[1];
-    if(uip_acc32[1] == 0) {
-      ++uip_acc32[0];
+  if(uip->acc32[2] < (op16 >> 8)) {
+    ++uip->acc32[1];
+    if(uip->acc32[1] == 0) {
+      ++uip->acc32[0];
     }
   }
-  if(uip_acc32[3] < (op16 & 0xff)) {
-    ++uip_acc32[2];
-    if(uip_acc32[2] == 0) {
-      ++uip_acc32[1];
-      if(uip_acc32[1] == 0) {
-        ++uip_acc32[0];
+  if(uip->acc32[3] < (op16 & 0xff)) {
+    ++uip->acc32[2];
+    if(uip->acc32[2] == 0) {
+      ++uip->acc32[1];
+      if(uip->acc32[1] == 0) {
+        ++uip->acc32[0];
       }
     }
   }
 }
-
 #endif /* UIP_ARCH_ADD32 */
-
 /*---------------------------------------------------------------------------*/
 #ifndef UIP_ARCH_CHKSUM
 static uint16_t
@@ -228,10 +220,10 @@ void
 uip_init(uip_t uip, uip_callback_t app)
 {
   memset(uip, 0, sizeof(struct uip));
-  for(c = 0; c < UIP_LISTENPORTS; ++c) {
+  for(uint16_t c = 0; c < UIP_LISTENPORTS; ++c) {
     uip->listenports[c] = 0;
   }
-  for(c = 0; c < UIP_CONNS; ++c) {
+  for(uint16_t c = 0; c < UIP_CONNS; ++c) {
     uip->conns[c].tcpstateflags = UIP_CLOSED;
   }
   uip->lastport = 1024;
@@ -252,7 +244,7 @@ again:
   }
 
   /* Check if this port is already in use, and if so try to find another one. */
-  for(c = 0; c < UIP_CONNS; ++c) {
+  for(uint16_t c = 0; c < UIP_CONNS; ++c) {
     conn = &uip->conns[c];
     if(conn->tcpstateflags != UIP_CLOSED &&
        conn->lport == htons(uip->lastport)) {
@@ -261,7 +253,7 @@ again:
   }
 
   conn = 0;
-  for(c = 0; c < UIP_CONNS; ++c) {
+  for(uint16_t c = 0; c < UIP_CONNS; ++c) {
     cconn = &uip->conns[c];
     if(cconn->tcpstateflags == UIP_CLOSED) {
       conn = cconn;
@@ -304,7 +296,7 @@ again:
 void
 uip_unlisten(uip_t uip, uint16_t port)
 {
-  for(c = 0; c < UIP_LISTENPORTS; ++c) {
+  for(uint16_t c = 0; c < UIP_LISTENPORTS; ++c) {
     if(uip->listenports[c] == port) {
       uip->listenports[c] = 0;
       return;
@@ -315,7 +307,7 @@ uip_unlisten(uip_t uip, uint16_t port)
 void
 uip_listen(uip_t uip, uint16_t port)
 {
-  for(c = 0; c < UIP_LISTENPORTS; ++c) {
+  for(uint16_t c = 0; c < UIP_LISTENPORTS; ++c) {
     if(uip->listenports[c] == 0) {
       uip->listenports[c] = port;
       return;
@@ -326,16 +318,18 @@ uip_listen(uip_t uip, uint16_t port)
 static void
 uip_add_rcv_nxt(uip_t uip, uint16_t n)
 {
-  uip_add32(uip->conn->rcv_nxt, n);
-  uip->conn->rcv_nxt[0] = uip_acc32[0];
-  uip->conn->rcv_nxt[1] = uip_acc32[1];
-  uip->conn->rcv_nxt[2] = uip_acc32[2];
-  uip->conn->rcv_nxt[3] = uip_acc32[3];
+  uip_add32(uip, uip->conn->rcv_nxt, n);
+  uip->conn->rcv_nxt[0] = uip->acc32[0];
+  uip->conn->rcv_nxt[1] = uip->acc32[1];
+  uip->conn->rcv_nxt[2] = uip->acc32[2];
+  uip->conn->rcv_nxt[3] = uip->acc32[3];
 }
 /*---------------------------------------------------------------------------*/
 void
 uip_process(uip_t uip, uint8_t flag)
 {
+  uint8_t opt = 0;
+  uint16_t c = 0, tmp16 = 0;
   register struct uip_conn *uip_connr = uip->conn;
   uip->sappdata = uip->appdata = &uip->buf[UIP_IPTCPH_LEN + UIP_LLH_LEN];
 
@@ -450,14 +444,14 @@ uip_process(uip_t uip, uint8_t flag)
   }
 
   /* This is where the input processing starts. */
-  UIP_STAT(++uip_stat.ip.recv);
+  UIP_STAT(++uip->stat.ip.recv);
 
   /* Start of IP input header processing code. */
 
   /* Check validity of the IP header. */
   if(BUF(uip)->vhl != 0x45)  { /* IP version and header length. */
-    UIP_STAT(++uip_stat.ip.drop);
-    UIP_STAT(++uip_stat.ip.vhlerr);
+    UIP_STAT(++uip->stat.ip.drop);
+    UIP_STAT(++uip->stat.ip.vhlerr);
     UIP_LOG("ip: invalid version or header length.");
     goto drop;
   }
@@ -478,8 +472,8 @@ uip_process(uip_t uip, uint8_t flag)
   /* Check the fragment flag. */
   if((BUF(uip)->ipoffset[0] & 0x3f) != 0 ||
       BUF(uip)->ipoffset[1] != 0) {
-    UIP_STAT(++uip_stat.ip.drop);
-    UIP_STAT(++uip_stat.ip.fragerr);
+    UIP_STAT(++uip->stat.ip.drop);
+    UIP_STAT(++uip->stat.ip.fragerr);
     UIP_LOG("ip: fragment dropped.");
     goto drop;
   }
@@ -491,15 +485,15 @@ uip_process(uip_t uip, uint8_t flag)
   } else {
     /* Check if the packet is destined for our IP address. */
     if(!uip_ipaddr_cmp(BUF(uip)->destipaddr, uip->hostaddr)) {
-      UIP_STAT(++uip_stat.ip.drop);
+      UIP_STAT(++uip->stat.ip.drop);
       goto drop;
     }
   }
 
   if(uip_ipchksum(uip) != 0xffff) { /* Compute and check the IP header
                                     checksum. */
-    UIP_STAT(++uip_stat.ip.drop);
-    UIP_STAT(++uip_stat.ip.chkerr);
+    UIP_STAT(++uip->stat.ip.drop);
+    UIP_STAT(++uip->stat.ip.chkerr);
     UIP_LOG("ip: bad checksum.");
     goto drop;
   }
@@ -513,20 +507,20 @@ uip_process(uip_t uip, uint8_t flag)
   /* ICMPv4 processing code follows. */
   if(BUF(uip)->proto != UIP_PROTO_ICMP) { /* We only allow ICMP packets from
                                         here. */
-    UIP_STAT(++uip_stat.ip.drop);
-    UIP_STAT(++uip_stat.ip.protoerr);
+    UIP_STAT(++uip->stat.ip.drop);
+    UIP_STAT(++uip->stat.ip.protoerr);
     UIP_LOG("ip: neither tcp nor icmp.");
     goto drop;
   }
 
-  UIP_STAT(++uip_stat.icmp.recv);
+  UIP_STAT(++uip->stat.icmp.recv);
 
   /* ICMP echo (i.e., ping) processing. This is simple, we only change the
    * ICMP type from ECHO to ECHO_REPLY and adjust the ICMP checksum before we
    * return the packet. */
   if(ICMPBUF(uip)->type != ICMP_ECHO) {
-    UIP_STAT(++uip_stat.icmp.drop);
-    UIP_STAT(++uip_stat.icmp.typeerr);
+    UIP_STAT(++uip->stat.icmp.drop);
+    UIP_STAT(++uip->stat.icmp.typeerr);
     UIP_LOG("icmp: not icmp echo.");
     goto drop;
   }
@@ -543,7 +537,7 @@ uip_process(uip_t uip, uint8_t flag)
   uip_ipaddr_copy(BUF(uip)->destipaddr, BUF(uip)->srcipaddr);
   uip_ipaddr_copy(BUF(uip)->srcipaddr, uip->hostaddr);
 
-  UIP_STAT(++uip_stat.icmp.sent);
+  UIP_STAT(++uip->stat.icmp.sent);
   goto send;
 
   /* End of IPv4 input header processing code. */
@@ -551,14 +545,14 @@ uip_process(uip_t uip, uint8_t flag)
   /* TCP input processing. */
 tcp_input:
 
-  UIP_STAT(++uip_stat.tcp.recv);
+  UIP_STAT(++uip->stat.tcp.recv);
 
   /* Start of TCP input header processing code. */
 
   if(uip_tcpchksum(uip) != 0xffff) {   /* Compute and check the TCP
                                        checksum. */
-    UIP_STAT(++uip_stat.tcp.drop);
-    UIP_STAT(++uip_stat.tcp.chkerr);
+    UIP_STAT(++uip->stat.tcp.drop);
+    UIP_STAT(++uip->stat.tcp.chkerr);
     UIP_LOG("tcp: bad checksum.");
     goto drop;
   }
@@ -586,13 +580,13 @@ tcp_input:
 
   tmp16 = BUF(uip)->destport;
   /* Next, check listening connections. */
-  for(c = 0; c < UIP_LISTENPORTS; ++c) {
+  for(uint16_t c = 0; c < UIP_LISTENPORTS; ++c) {
     if(tmp16 == uip->listenports[c])
       goto found_listen;
   }
 
   /* No matching connection found, so we send a RST packet. */
-  UIP_STAT(++uip_stat.tcp.synrst);
+  UIP_STAT(++uip->stat.tcp.synrst);
 
 reset:
 
@@ -601,7 +595,7 @@ reset:
     goto drop;
   }
 
-  UIP_STAT(++uip_stat.tcp.rst);
+  UIP_STAT(++uip->stat.tcp.rst);
 
   BUF(uip)->flags = TCP_RST | TCP_ACK;
   uip->len = UIP_IPTCPH_LEN;
@@ -662,7 +656,7 @@ found_listen:
    * nice algorithm for the TIME_WAIT search. */
 
   uip_connr = 0;
-  for(c = 0; c < UIP_CONNS; ++c) {
+  for(uint16_t c = 0; c < UIP_CONNS; ++c) {
     if(uip->conns[c].tcpstateflags == UIP_CLOSED) {
       uip_connr = &uip->conns[c];
       break;
@@ -679,7 +673,7 @@ found_listen:
     /* All connections are used already, we drop packet and hope that the remote
      * end will retransmit the packet at a time when we have more spare
      * connections. */
-    UIP_STAT(++uip_stat.tcp.syndrop);
+    UIP_STAT(++uip->stat.tcp.syndrop);
     UIP_LOG("tcp: found no unused connections.");
     goto drop;
   }
@@ -710,7 +704,7 @@ found_listen:
 
   /* Parse the TCP MSS option, if present. */
   if((BUF(uip)->tcpoffset & 0xf0) > 0x50) {
-    for(c = 0; c < ((BUF(uip)->tcpoffset >> 4) - 5) << 2 ;) {
+    for(uint16_t c = 0; c < ((BUF(uip)->tcpoffset >> 4) - 5) << 2 ;) {
       opt = uip->buf[UIP_TCPIP_HLEN + UIP_LLH_LEN + c];
       if(opt == TCP_OPT_END) {
         /* End of options. */
@@ -811,17 +805,17 @@ found:
    * retransmission timer. */
 
   if((BUF(uip)->flags & TCP_ACK) && uip_outstanding(uip_connr)) {
-    uip_add32(uip_connr->snd_nxt, uip_connr->len);
+    uip_add32(uip, uip_connr->snd_nxt, uip_connr->len);
 
-    if(BUF(uip)->ackno[0] == uip_acc32[0] &&
-        BUF(uip)->ackno[1] == uip_acc32[1] &&
-        BUF(uip)->ackno[2] == uip_acc32[2] &&
-        BUF(uip)->ackno[3] == uip_acc32[3]) {
+    if(BUF(uip)->ackno[0] == uip->acc32[0] &&
+        BUF(uip)->ackno[1] == uip->acc32[1] &&
+        BUF(uip)->ackno[2] == uip->acc32[2] &&
+        BUF(uip)->ackno[3] == uip->acc32[3]) {
       /* Update sequence number. */
-      uip_connr->snd_nxt[0] = uip_acc32[0];
-      uip_connr->snd_nxt[1] = uip_acc32[1];
-      uip_connr->snd_nxt[2] = uip_acc32[2];
-      uip_connr->snd_nxt[3] = uip_acc32[3];
+      uip_connr->snd_nxt[0] = uip->acc32[0];
+      uip_connr->snd_nxt[1] = uip->acc32[1];
+      uip_connr->snd_nxt[2] = uip->acc32[2];
+      uip_connr->snd_nxt[3] = uip->acc32[3];
 
       /* Do RTT estimation, unless we have done retransmissions. */
       if(uip_connr->nrtx == 0) {
@@ -881,7 +875,7 @@ found:
          (BUF(uip)->flags & TCP_CTL) == (TCP_SYN | TCP_ACK)) {
         /* Parse the TCP MSS option, if present. */
         if((BUF(uip)->tcpoffset & 0xf0) > 0x50) {
-          for(c = 0; c < ((BUF(uip)->tcpoffset >> 4) - 5) << 2 ;) {
+          for(uint16_t c = 0; c < ((BUF(uip)->tcpoffset >> 4) - 5) << 2 ;) {
             opt = uip->buf[UIP_IPTCPH_LEN + UIP_LLH_LEN + c];
             if(opt == TCP_OPT_END) {
               /* End of options. */
@@ -1257,14 +1251,14 @@ tcp_send_noconn:
   BUF(uip)->ipchksum = ~(uip_ipchksum(uip));
   DEBUG_PRINTF("uip tcp_send_noconn: chksum 0x%04x\n", uip_ipchksum(uip));
 
-  UIP_STAT(++uip_stat.tcp.sent);
+  UIP_STAT(++uip->stat.tcp.sent);
 
 send:
 
   DEBUG_PRINTF("Sending packet with length %d (%d)\n", uip->len,
                (BUF(uip)->len[0] << 8) | BUF(uip)->len[1]);
 
-  UIP_STAT(++uip_stat.ip.sent);
+  UIP_STAT(++uip->stat.ip.sent);
   /* Return and let the caller do the actual transmission. */
   uip->flags = 0;
   return;
