@@ -56,11 +56,13 @@ main(void)
   uip_ipaddr_t ipaddr;
   struct timer periodic_timer, arp_timer;
 
-  timer_set(&periodic_timer, CLOCK_SECOND / 2);
+  clock_init();
+  timer_set(&periodic_timer, 2 * CLOCK_SECOND / 2);
   timer_set(&arp_timer, CLOCK_SECOND * 10);
 
   tapdev_init();
   uip_init(uip, webclient_appcall);
+  uip_arp_init(arp);
 
   uip_ipaddr(ipaddr, 10, 1, 0, 2);
   uip_sethostaddr(uip, ipaddr);

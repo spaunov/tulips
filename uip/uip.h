@@ -51,6 +51,7 @@
 #ifndef __UIP_H__
 #define __UIP_H__
 
+#include "debug.h"
 #include "options.h"
 #include <stdint.h>
 
@@ -109,6 +110,7 @@ struct uip_conn {
 } __attribute__((packed));
 
 #if UIP_STATISTICS
+#define UIP_STAT(s) s
 /**
  * The structure holding the TCP/IP statistics that are gathered if
  * UIP_STATISTICS is set to 1.
@@ -158,6 +160,8 @@ struct uip_stats {
                             triggering a RST. */
   } tcp;                  /**< TCP statistics. */
 } __attribute__((packed));
+#else
+#define UIP_STAT(s)
 #endif
 
 /**
@@ -1240,45 +1244,13 @@ struct uip_icmpip_hdr {
 #define UIP_IPTCPH_LEN (UIP_TCPH_LEN + UIP_IPH_LEN)    /* Size of IP + TCP */
 #define UIP_TCPIP_HLEN UIP_IPTCPH_LEN
 
+#if !UIP_ARCH_IPCHKSUM
 /**
- * Calculate the Internet checksum over a buffer.
- *
- * The Internet checksum is the one's complement of the one's
- * complement sum of all 16-bit words in the buffer.
- *
- * See RFC1071.
- *
- * \param buf A pointer to the buffer over which the checksum is to be
- * computed.
- *
- * \param len The length of the buffer over which the checksum is to
- * be computed.
- *
- * \return The Internet checksum of the buffer.
+ * Helper function to calculate a checksum.
  */
-uint16_t uip_chksum(uint16_t *buf, uint16_t len);
-
-/**
- * Calculate the IP header checksum of the packet header in uip_buf.
- *
- * The IP header checksum is the Internet checksum of the 20 bytes of
- * the IP header.
- *
- * \return The IP header checksum of the IP header in the uip_buf
- * buffer.
- */
-uint16_t uip_ipchksum(uip_t uip);
-
-/**
- * Calculate the TCP checksum of the packet in uip_buf and uip_appdata.
- *
- * The TCP checksum is the Internet checksum of data contents of the
- * TCP segment, and a pseudo-header as defined in RFC793.
- *
- * \return The TCP checksum of the TCP segment in uip_buf and pointed
- * to by uip_appdata.
- */
-uint16_t uip_tcpchksum(uip_t uip);
+uint16_t
+chksum(uint16_t sum, const uint8_t *data, uint16_t len);
+#endif
 
 #endif /* __UIP_H__ */
 

@@ -55,12 +55,40 @@
 #include <stdint.h>
 
 /**
- * The Ethernet header.
+ * The protocol headers.
  */
 struct uip_eth_hdr {
   uip_macaddr_t dest;
   uip_macaddr_t src;
   uint16_t type;
+} __attribute__((packed));
+
+struct arp_hdr {
+  struct uip_eth_hdr ethhdr;
+  uint16_t hwtype;
+  uint16_t protocol;
+  uint8_t hwlen;
+  uint8_t protolen;
+  uint16_t opcode;
+  uip_macaddr_t shwaddr;
+  uint16_t sipaddr[2];
+  uip_macaddr_t dhwaddr;
+  uint16_t dipaddr[2];
+} __attribute__((packed));
+
+struct ethip_hdr {
+  struct uip_eth_hdr ethhdr;
+  /* IP header. */
+  uint8_t vhl,
+          tos,
+          len[2],
+          ipid[2],
+          ipoffset[2],
+          ttl,
+          proto;
+  uint16_t ipchksum;
+  uint16_t srcipaddr[2],
+           destipaddr[2];
 } __attribute__((packed));
 
 /**
@@ -116,6 +144,12 @@ void uip_arp_out(uip_t uip, uip_arp_t arp);
    is responsible for flushing old entries in the ARP table. */
 void uip_arp_timer(uip_arp_t arp);
 
+/**
+ * Internal update function
+ */
+void
+uip_arp_update(uip_arp_t arp, uint16_t *ipaddr, uip_macaddr_t *ethaddr);
+
 /** @} */
 
 /**
@@ -123,6 +157,9 @@ void uip_arp_timer(uip_arp_t arp);
  * @{
  */
 
+#define ARP_REQUEST     1
+#define ARP_REPLY       2
+#define ARP_HWTYPE_ETH  1
 
 /**
  * Specifiy the Ethernet MAC address.
