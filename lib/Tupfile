@@ -1,4 +1,0 @@
-include_rules
-
-: foreach *.c |> !cc |>
-: *.o         |> !ar |> lib.a <lib>
