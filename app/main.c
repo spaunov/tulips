@@ -52,6 +52,7 @@ main(void)
 {
   int i;
   uip_t uip = (uip_t)memalign(64, sizeof(struct uip));
+  uip_arp_t arp = (uip_arp_t)memalign(64, sizeof(struct uip_arp));
   uip_ipaddr_t ipaddr;
   struct timer periodic_timer, arp_timer;
 
@@ -74,17 +75,17 @@ main(void)
   while(1) {
     if(tapdev_read(uip) > 0) {
       if(BUF(uip)->type == htons(UIP_ETHTYPE_IP)) {
-        uip_arp_ipin(uip);
+        uip_arp_ipin(uip, arp);
         uip_input(uip);
         /* If the above function invocation resulted in data that
            should be sent out on the network, the global variable
            uip_len is set to a value > 0. */
         if(uip->len > 0) {
-          uip_arp_out(uip);
+          uip_arp_out(uip, arp);
           tapdev_send(uip);
         }
       } else if(BUF(uip)->type == htons(UIP_ETHTYPE_ARP)) {
-        uip_arp_arpin(uip);
+        uip_arp_arpin(uip, arp);
         /* If the above function invocation resulted in data that
            should be sent out on the network, the global variable
            uip_len is set to a value > 0. */
@@ -100,14 +101,14 @@ main(void)
            should be sent out on the network, the global variable
            uip_len is set to a value > 0. */
         if(uip->len > 0) {
-          uip_arp_out(uip);
+          uip_arp_out(uip, arp);
           tapdev_send(uip);
         }
       }
       /* Call the ARP timer function every 10 seconds. */
       if(timer_expired(&arp_timer)) {
         timer_reset(&arp_timer);
-        uip_arp_timer();
+        uip_arp_timer(arp);
       }
     }
   }

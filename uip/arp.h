@@ -52,30 +52,45 @@
 #define __UIP_ARP_H__
 
 #include "uip.h"
+#include <stdint.h>
 
 /**
  * The Ethernet header.
  */
 struct uip_eth_hdr {
-  struct uip_eth_addr dest;
-  struct uip_eth_addr src;
+  uip_macaddr_t dest;
+  uip_macaddr_t src;
   uint16_t type;
-};
+} __attribute__((packed));
+
+/**
+ * The ARP type.
+ */
+
+struct arp_entry {
+  uint16_t ipaddr[2];
+  uip_macaddr_t ethaddr;
+  uint8_t time;
+} __attribute__((packed));
+
+typedef struct uip_arp {
+  struct arp_entry table[UIP_ARPTAB_SIZE];
+  uint8_t time;
+} __attribute__((packed)) * uip_arp_t;
 
 #define UIP_ETHTYPE_ARP 0x0806
 #define UIP_ETHTYPE_IP  0x0800
-#define UIP_ETHTYPE_IP6 0x86dd
 
 /* The uip_arp_init() function must be called before any of the other
    ARP functions. */
-void uip_arp_init(void);
+void uip_arp_init(uip_arp_t arp);
 
 /* The uip_arp_ipin() function should be called whenever an IP packet
    arrives from the Ethernet. This function refreshes the ARP table or
    inserts a new mapping if none exists. The function assumes that an
    IP packet with an Ethernet header is present in the uip_buf buffer
    and that the length of the packet is in the uip_len variable. */
-void uip_arp_ipin(uip_t uip);
+void uip_arp_ipin(uip_t uip, uip_arp_t arp);
 
 /* The uip_arp_arpin() should be called when an ARP packet is received
    by the Ethernet driver. This function also assumes that the
@@ -83,7 +98,7 @@ void uip_arp_ipin(uip_t uip);
    uip_arp_arpin() function returns, the contents of the uip_buf
    buffer should be sent out on the Ethernet if the uip_len variable
    is > 0. */
-void uip_arp_arpin(uip_t uip);
+void uip_arp_arpin(uip_t uip, uip_arp_t arp);
 
 /* The uip_arp_out() function should be called when an IP packet
    should be sent out on the Ethernet. This function creates an
@@ -95,11 +110,11 @@ void uip_arp_arpin(uip_t uip);
    request and we rely on TCP to retransmit the packet that was
    overwritten. In any case, the uip_len variable holds the length of
    the Ethernet frame that should be transmitted. */
-void uip_arp_out(uip_t uip);
+void uip_arp_out(uip_t uip, uip_arp_t arp);
 
 /* The uip_arp_timer() function should be called every ten seconds. It
    is responsible for flushing old entries in the ARP table. */
-void uip_arp_timer(void);
+void uip_arp_timer(uip_arp_t arp);
 
 /** @} */
 

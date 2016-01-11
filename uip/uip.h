@@ -1,4 +1,3 @@
-
 /**
  * \addtogroup uip
  * @{
@@ -58,9 +57,9 @@
 /**
  * Representation of a 48-bit Ethernet address.
  */
-struct uip_eth_addr {
+typedef struct uip_macaddr {
   uint8_t addr[6];
-};
+} uip_macaddr_t;
 
 /**
  * Repressentation of an IP address.
@@ -109,8 +108,7 @@ struct uip_conn {
   void *  appstate;
 } __attribute__((packed));
 
-#ifdef UIP_STATISTICS
-
+#if UIP_STATISTICS
 /**
  * The structure holding the TCP/IP statistics that are gathered if
  * UIP_STATISTICS is set to 1.
@@ -160,7 +158,6 @@ struct uip_stats {
                             triggering a RST. */
   } tcp;                  /**< TCP statistics. */
 } __attribute__((packed));
-
 #endif
 
 /**
@@ -177,7 +174,7 @@ typedef struct uip {
   uip_ipaddr_t        hostaddr;
   uip_ipaddr_t        draddr;
   uip_ipaddr_t        netmask;
-  struct uip_eth_addr ethaddr;
+  uip_macaddr_t       ethaddr;
   uint8_t             buf[UIP_BUFSIZE + 2];
   void *              appdata;
   void *              sappdata;
@@ -197,7 +194,7 @@ typedef struct uip {
   uint8_t             iss[4];
   uint16_t            lastport;
   uint8_t             acc32[4];
-#ifdef UIP_STATISTICS
+#if UIP_STATISTICS
   struct uip_stats    stat;
 #endif
 } __attribute__((packed)) * uip_t;
@@ -1178,7 +1175,7 @@ struct uip_tcpip_hdr {
   uint16_t tcpchksum;
   uint8_t urgp[2];
   uint8_t optdata[4];
-};
+} __attribute__((packed));
 
 /* The ICMP and IP headers. */
 struct uip_icmpip_hdr {
@@ -1198,7 +1195,7 @@ struct uip_icmpip_hdr {
   uint8_t type, icode;
   uint16_t icmpchksum;
   uint16_t id, seqno;
-};
+} __attribute__((packed));
 
 #define TCP_FIN 0x01
 #define TCP_SYN 0x02
