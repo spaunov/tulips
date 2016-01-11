@@ -41,9 +41,9 @@
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
+#include <uip/arp.h>
 #include <uip/timer.h>
 #include <uip/uip.h>
-#include <uip/uip_arp.h>
 
 #define BUF(uip) ((struct uip_eth_hdr *)&uip->buf[0])
 

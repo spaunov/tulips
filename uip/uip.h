@@ -52,7 +52,7 @@
 #ifndef __UIP_H__
 #define __UIP_H__
 
-#include "uipopt.h"
+#include "options.h"
 #include <stdint.h>
 
 /**

@@ -56,7 +56,7 @@
  */
 
 #include <uip/uip.h>
-#include <uip/uiplib.h>
+#include <uip/lib.h>
 #include "webclient.h"
 
 #include <string.h>

@@ -67,7 +67,7 @@
 #define UIP_BIG_ENDIAN     1234
 #endif /* UIP_BIG_ENDIAN */
 
-#include "uip_conf.h"
+#include "config.h"
 
 /*------------------------------------------------------------------------------*/
 /**

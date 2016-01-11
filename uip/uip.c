@@ -80,8 +80,7 @@
  */
 
 #include "uip.h"
-#include "uipopt.h"
-#include "uip_arch.h"
+#include "arch.h"
 #include <string.h>
 
 static const uip_ipaddr_t all_zeroes_addr = {0x0000,0x0000};

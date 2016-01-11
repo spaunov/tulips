@@ -59,8 +59,7 @@
  */
 
 
-#include "uip_arp.h"
-
+#include "arp.h"
 #include <string.h>
 
 struct arp_hdr {
