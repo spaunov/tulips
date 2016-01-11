@@ -67,32 +67,8 @@
 #define UIP_BIG_ENDIAN     1234
 #endif /* UIP_BIG_ENDIAN */
 
-#include <app/uip-conf.h>
+#include "uip_conf.h"
 
-/*------------------------------------------------------------------------------*/
-
-/**
- * \name Static configuration options
- * @{
-*/
-
-/**
- * Ping IP address asignment.
- *
- * uIP uses a "ping" packets for setting its own IP address if this
- * option is set. If so, uIP will start with an empty IP address and
- * the destination IP address of the first incoming "ping" (ICMP echo)
- * packet will be used for setting the hosts IP address.
- *
- * \hideinitializer
- */
-#ifdef UIP_CONF_PINGADDRCONF
-#define UIP_PINGADDRCONF UIP_CONF_PINGADDRCONF
-#else /* UIP_CONF_PINGADDRCONF */
-#define UIP_PINGADDRCONF 0
-#endif /* UIP_CONF_PINGADDRCONF */
-
-/** @} */
 /*------------------------------------------------------------------------------*/
 /**
  * \name IP configuration options
@@ -114,18 +90,6 @@
  * \name TCP configuration options
  * @{
  */
-
-/**
- * Determines if support for opening connections from uIP should be
- * compiled in.
- *
- * If the applications that are running on top of uIP for this project
- * do not need to open outgoing TCP connections, this configration
- * option can be turned off to reduce the code size of uIP.
- *
- * \hideinitializer
- */
-#define UIP_ACTIVE_OPEN 1
 
 /**
  * The maximum number of simultaneously open TCP connections.

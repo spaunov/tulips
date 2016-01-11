@@ -48,29 +48,29 @@
 
 
 #include "webclient-strings.h"
-#include <uip/uipopt.h>
+#include <uip/uip.h>
 
 #define WEBCLIENT_CONF_MAX_URLLEN 100
 
 struct webclient_state {
-  u8_t timer;
-  u8_t state;
-  u8_t httpflag;
+  uint8_t timer;
+  uint8_t state;
+  uint8_t httpflag;
 
-  u16_t port;
+  uint16_t port;
   char host[40];
   char file[WEBCLIENT_CONF_MAX_URLLEN];
-  u16_t getrequestptr;
-  u16_t getrequestleft;
+  uint16_t getrequestptr;
+  uint16_t getrequestleft;
 
   char httpheaderline[200];
-  u16_t httpheaderlineptr;
+  uint16_t httpheaderlineptr;
 
   char mimetype[32];
 };
 
 typedef struct webclient_state uip_tcp_appstate_t;
-extern void webclient_appcall();
+extern void webclient_appcall(uip_t uip);
 
 #ifndef UIP_APPCALL
 #define UIP_APPCALL webclient_appcall
@@ -91,7 +91,7 @@ extern void webclient_appcall();
  * \param data A pointer to the data that has been received.
  * \param len The length of the data that has been received.
  */
-void webclient_datahandler(char *data, u16_t len);
+void webclient_datahandler(char *data, uint16_t len);
 
 /**
  * Callback function that is called from the webclient code when the
@@ -129,8 +129,6 @@ void webclient_aborted(void);
  * webclient code.
  */
 void webclient_closed(void);
-
-
 
 /**
  * Initialize the webclient module.
@@ -173,13 +171,13 @@ void webclient_init(void);
  *
  * \retval 1 if the connection was initiated.
  */
-unsigned char webclient_get(char *host, u16_t port, char *file);
+unsigned char webclient_get(uip_t uip, char *host, uint16_t port, char *file);
 
 /**
  * Close the currently open HTTP connection.
  */
 void webclient_close(void);
-void webclient_appcall(void);
+void webclient_appcall(uip_t uip);
 
 /**
  * Obtain the MIME type of the current HTTP data stream.

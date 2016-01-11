@@ -15,7 +15,6 @@
  *
  */
 
-
 /*
  * Copyright (c) 2001-2003, Adam Dunkels.
  * All rights reserved.
@@ -54,13 +53,181 @@
 #define __UIP_H__
 
 #include "uipopt.h"
+#include <stdint.h>
+
+/**
+ * Representation of a 48-bit Ethernet address.
+ */
+struct uip_eth_addr {
+  uint8_t addr[6];
+};
 
 /**
  * Repressentation of an IP address.
  *
  */
-typedef u16_t uip_ip4addr_t[2];
+typedef uint16_t uip_ip4addr_t[2];
 typedef uip_ip4addr_t uip_ipaddr_t;
+
+/**
+ * Representation of a uIP TCP connection.
+ *
+ * The uip_conn structure is used for identifying a connection. All
+ * but one field in the structure are to be considered read-only by an
+ * application. The only exception is the appstate field whos purpose
+ * is to let the application store application-specific state (e.g.,
+ * file pointers) for the connection. The type of this field is
+ * configured in the "uipopt.h" header file.
+ */
+struct uip_conn {
+  uip_ipaddr_t ripaddr;   /**< The IP address of the remote host. */
+
+  uint16_t lport;        /**< The local TCP port, in network byte order. */
+  uint16_t rport;        /**< The local remote TCP port, in network byte
+                        order. */
+
+  uint8_t rcv_nxt[4];    /**< The sequence number that we expect to
+                        receive next. */
+  uint8_t snd_nxt[4];    /**< The sequence number that was last sent by
+                        us. */
+  uint16_t len;          /**< Length of the data that was previously sent. */
+  uint16_t mss;          /**< Current maximum segment size for the
+                        connection. */
+  uint16_t initialmss;   /**< Initial maximum segment size for the
+                        connection. */
+  uint8_t sa;            /**< Retransmission time-out calculation state
+                        variable. */
+  uint8_t sv;            /**< Retransmission time-out calculation state
+                        variable. */
+  uint8_t rto;           /**< Retransmission time-out. */
+  uint8_t tcpstateflags; /**< TCP state and flags. */
+  uint8_t timer;         /**< The retransmission timer. */
+  uint8_t nrtx;          /**< The number of retransmissions for the last
+                        segment sent. */
+
+  /** The application state. */
+  void *  appstate;
+} __attribute__((packed));
+
+#ifdef UIP_STATISTICS
+
+/**
+ * The structure holding the TCP/IP statistics that are gathered if
+ * UIP_STATISTICS is set to 1.
+ *
+ */
+struct uip_stats {
+  struct {
+    uip_stats_t drop;     /**< Number of dropped packets at the IP
+                            layer. */
+    uip_stats_t recv;     /**< Number of received packets at the IP
+                            layer. */
+    uip_stats_t sent;     /**< Number of sent packets at the IP
+                            layer. */
+    uip_stats_t vhlerr;   /**< Number of packets dropped due to wrong
+                            IP version or header length. */
+    uip_stats_t hblenerr; /**< Number of packets dropped due to wrong
+                            IP length, high byte. */
+    uip_stats_t lblenerr; /**< Number of packets dropped due to wrong
+                            IP length, low byte. */
+    uip_stats_t fragerr;  /**< Number of packets dropped since they
+                            were IP fragments. */
+    uip_stats_t chkerr;   /**< Number of packets dropped due to IP
+                            checksum errors. */
+    uip_stats_t protoerr; /**< Number of packets dropped since they
+                            were neither ICMP nor TCP. */
+  } ip;                   /**< IP statistics. */
+  struct {
+    uip_stats_t drop;     /**< Number of dropped ICMP packets. */
+    uip_stats_t recv;     /**< Number of received ICMP packets. */
+    uip_stats_t sent;     /**< Number of sent ICMP packets. */
+    uip_stats_t typeerr;  /**< Number of ICMP packets with a wrong
+                            type. */
+  } icmp;                 /**< ICMP statistics. */
+  struct {
+    uip_stats_t drop;     /**< Number of dropped TCP segments. */
+    uip_stats_t recv;     /**< Number of recived TCP segments. */
+    uip_stats_t sent;     /**< Number of sent TCP segments. */
+    uip_stats_t chkerr;   /**< Number of TCP segments with a bad
+                            checksum. */
+    uip_stats_t ackerr;   /**< Number of TCP segments with a bad ACK
+                            number. */
+    uip_stats_t rst;      /**< Number of recevied TCP RST (reset) segments. */
+    uip_stats_t rexmit;   /**< Number of retransmitted TCP segments. */
+    uip_stats_t syndrop;  /**< Number of dropped SYNs due to too few
+                            connections was avaliable. */
+    uip_stats_t synrst;   /**< Number of SYNs for closed ports,
+                            triggering a RST. */
+  } tcp;                  /**< TCP statistics. */
+} __attribute__((packed));
+
+#endif
+
+/**
+ * Application callback
+ */
+
+struct uip;
+typedef void (*uip_callback_t)(struct uip * uip);
+
+/**
+ * Representation of the TCP stack.
+ */
+typedef struct uip {
+  uip_ipaddr_t        hostaddr;
+  uip_ipaddr_t        draddr;
+  uip_ipaddr_t        netmask;
+  struct uip_eth_addr ethaddr;
+  uint8_t             buf[UIP_BUFSIZE + 2];
+  void *              appdata;
+  void *              sappdata;
+  uip_callback_t      app;
+#if UIP_URGDATA > 0
+  void *              urgdata;
+  uint16_t            urglen;
+  uint16_t            surglen;
+#endif /* UIP_URGDATA > 0 */
+  uint16_t            len;
+  uint16_t            slen;
+  uint8_t             flags;
+  struct uip_conn *   conn;
+  struct uip_conn     conns[UIP_CONNS];
+  uint16_t            listenports[UIP_LISTENPORTS];
+  uint16_t            ipid;
+  uint8_t             iss[4];
+  uint16_t            lastport;
+  uint8_t             acc32[4];
+#ifdef UIP_STATISTICS
+  struct uip_stats    stat;
+#endif
+} __attribute__((packed)) * uip_t;
+
+/**
+ * The uIP packet buffer.
+ *
+ * The uip_buf array is used to hold incoming and outgoing
+ * packets. The device driver should place incoming data into this
+ * buffer. When sending data, the device driver should read the link
+ * level headers and the TCP/IP headers from this buffer. The size of
+ * the link level headers is configured by the UIP_LLH_LEN define.
+ *
+ * \note The application data need not be placed in this buffer, so
+ * the device driver must read it from the place pointed to by the
+ * uip_appdata pointer as illustrated by the following example:
+ \code
+ void
+ devicedriver_send(void)
+ {
+ hwsend(&uip_buf[0], UIP_LLH_LEN);
+ if(uip_len <= UIP_LLH_LEN + UIP_TCPIP_HLEN) {
+ hwsend(&uip_buf[UIP_LLH_LEN], uip_len - UIP_LLH_LEN);
+ } else {
+ hwsend(&uip_buf[UIP_LLH_LEN], UIP_TCPIP_HLEN);
+ hwsend(uip_appdata, uip_len - UIP_TCPIP_HLEN - UIP_LLH_LEN);
+ }
+ }
+ \endcode
+ */
 
 /*---------------------------------------------------------------------------*/
 /* First, the functions that should be called from the
@@ -98,7 +265,7 @@ typedef uip_ip4addr_t uip_ipaddr_t;
  *
  * \hideinitializer
  */
-#define uip_sethostaddr(addr) uip_ipaddr_copy(uip_hostaddr, (addr))
+#define uip_sethostaddr(__uip, addr) uip_ipaddr_copy(__uip->hostaddr, (addr))
 
 /**
  * Get the IP address of this host.
@@ -118,7 +285,7 @@ typedef uip_ip4addr_t uip_ipaddr_t;
  *
  * \hideinitializer
  */
-#define uip_gethostaddr(addr) uip_ipaddr_copy((addr), uip_hostaddr)
+#define uip_gethostaddr(__uip, addr) uip_ipaddr_copy((addr), __uip->hostaddr)
 
 /**
  * Set the default router's IP address.
@@ -130,7 +297,7 @@ typedef uip_ip4addr_t uip_ipaddr_t;
  *
  * \hideinitializer
  */
-#define uip_setdraddr(addr) uip_ipaddr_copy(uip_draddr, (addr))
+#define uip_setdraddr(__uip, addr) uip_ipaddr_copy(__uip->draddr, (addr))
 
 /**
  * Set the netmask.
@@ -142,8 +309,7 @@ typedef uip_ip4addr_t uip_ipaddr_t;
  *
  * \hideinitializer
  */
-#define uip_setnetmask(addr) uip_ipaddr_copy(uip_netmask, (addr))
-
+#define uip_setnetmask(__uip, addr) uip_ipaddr_copy(__uip->netmask, (addr))
 
 /**
  * Get the default router's IP address.
@@ -153,7 +319,7 @@ typedef uip_ip4addr_t uip_ipaddr_t;
  *
  * \hideinitializer
  */
-#define uip_getdraddr(addr) uip_ipaddr_copy((addr), uip_draddr)
+#define uip_getdraddr(uip, addr) uip_ipaddr_copy((addr), uip->draddr)
 
 /**
  * Get the netmask.
@@ -163,7 +329,7 @@ typedef uip_ip4addr_t uip_ipaddr_t;
  *
  * \hideinitializer
  */
-#define uip_getnetmask(addr) uip_ipaddr_copy((addr), uip_netmask)
+#define uip_getnetmask(__uip, addr) uip_ipaddr_copy((addr), __uip->netmask)
 
 /** @} */
 
@@ -180,14 +346,14 @@ typedef uip_ip4addr_t uip_ipaddr_t;
  * This function should be called at boot up to initilize the uIP
  * TCP/IP stack.
  */
-void uip_init(void);
+void uip_init(uip_t uip, uip_callback_t app);
 
 /**
  * uIP initialization function.
  *
  * This function may be used at boot time to set the initial ip_id.
  */
-void uip_setipid(u16_t id);
+void uip_setipid(uip_t uip, uint16_t id);
 
 /** @} */
 
@@ -215,13 +381,13 @@ void uip_setipid(u16_t id);
  * The usual way of calling the function is presented by the source
  * code below.
  \code
-  uip_len = devicedriver_poll();
-  if(uip_len > 0) {
-    uip_input();
-    if(uip_len > 0) {
-      devicedriver_send();
-    }
-  }
+ uip_len = devicedriver_poll();
+ if(uip_len > 0) {
+ uip_input();
+ if(uip_len > 0) {
+ devicedriver_send();
+ }
+ }
  \endcode
  *
  * \note If you are writing a uIP device driver that needs ARP
@@ -229,27 +395,27 @@ void uip_setipid(u16_t id);
  * Ethernet, you will need to call the uIP ARP code before calling
  * this function:
  \code
-  #define BUF ((struct uip_eth_hdr *)&uip_buf[0])
-  uip_len = ethernet_devicedrver_poll();
-  if(uip_len > 0) {
-    if(BUF->type == HTONS(UIP_ETHTYPE_IP)) {
-      uip_arp_ipin();
-      uip_input();
-      if(uip_len > 0) {
-        uip_arp_out();
-	ethernet_devicedriver_send();
-      }
-    } else if(BUF->type == HTONS(UIP_ETHTYPE_ARP)) {
-      uip_arp_arpin();
-      if(uip_len > 0) {
-	ethernet_devicedriver_send();
-      }
-    }
- \endcode
+#define BUF ((struct uip_eth_hdr *)&uip_buf[0])
+uip_len = ethernet_devicedrver_poll();
+if(uip_len > 0) {
+if(BUF->type == HTONS(UIP_ETHTYPE_IP)) {
+uip_arp_ipin();
+uip_input();
+if(uip_len > 0) {
+uip_arp_out();
+ethernet_devicedriver_send();
+}
+} else if(BUF->type == HTONS(UIP_ETHTYPE_ARP)) {
+uip_arp_arpin();
+if(uip_len > 0) {
+ethernet_devicedriver_send();
+}
+}
+\endcode
  *
  * \hideinitializer
  */
-#define uip_input()        uip_process(UIP_DATA)
+#define uip_input(__uip)        uip_process(__uip, UIP_DATA)
 
 /**
  * Periodic processing for a connection identified by its number.
@@ -267,12 +433,12 @@ void uip_setipid(u16_t id);
  * The ususal way of calling the function is through a for() loop like
  * this:
  \code
-  for(i = 0; i < UIP_CONNS; ++i) {
-    uip_periodic(i);
-    if(uip_len > 0) {
-      devicedriver_send();
-    }
-  }
+ for(i = 0; i < UIP_CONNS; ++i) {
+ uip_periodic(i);
+ if(uip_len > 0) {
+ devicedriver_send();
+ }
+ }
  \endcode
  *
  * \note If you are writing a uIP device driver that needs ARP
@@ -280,27 +446,33 @@ void uip_setipid(u16_t id);
  * Ethernet, you will need to call the uip_arp_out() function before
  * calling the device driver:
  \code
-  for(i = 0; i < UIP_CONNS; ++i) {
-    uip_periodic(i);
-    if(uip_len > 0) {
-      uip_arp_out();
-      ethernet_devicedriver_send();
-    }
-  }
+ for(i = 0; i < UIP_CONNS; ++i) {
+ uip_periodic(i);
+ if(uip_len > 0) {
+ uip_arp_out();
+ ethernet_devicedriver_send();
+ }
+ }
  \endcode
  *
  * \param conn The number of the connection which is to be periodically polled.
  *
  * \hideinitializer
  */
-#define uip_periodic(conn) do { uip_conn = &uip_conns[conn]; \
-                                uip_process(UIP_TIMER); } while (0)
+#define uip_periodic(__uip, __conn) do {  \
+  uip->conn = &__uip->conns[__conn];      \
+  uip_process(__uip, UIP_TIMER);          \
+} while (0)
 
 /**
+ * Check if a connection is active.
  *
+ * \param conn The number of the connection which is to be periodically polled.
  *
+ * \hideinitializer
  */
-#define uip_conn_active(conn) (uip_conns[conn].tcpstateflags != UIP_CLOSED)
+#define uip_conn_active(__uip, conn)  \
+  (__uip->conns[conn].tcpstateflags != UIP_CLOSED)
 
 /**
  * Perform periodic processing for a connection identified by a pointer
@@ -315,8 +487,10 @@ void uip_setipid(u16_t id);
  *
  * \hideinitializer
  */
-#define uip_periodic_conn(conn) do { uip_conn = conn; \
-                                     uip_process(UIP_TIMER); } while (0)
+#define uip_periodic_conn(__uip, conn) do { \
+  __uip->conn = conn;                       \
+  uip_process(__uip, UIP_TIMER);            \
+} while (0)
 
 /**
  * Reuqest that a particular connection should be polled.
@@ -329,36 +503,10 @@ void uip_setipid(u16_t id);
  *
  * \hideinitializer
  */
-#define uip_poll_conn(conn) do { uip_conn = conn; \
-                                 uip_process(UIP_POLL_REQUEST); } while (0)
-
-/**
- * The uIP packet buffer.
- *
- * The uip_buf array is used to hold incoming and outgoing
- * packets. The device driver should place incoming data into this
- * buffer. When sending data, the device driver should read the link
- * level headers and the TCP/IP headers from this buffer. The size of
- * the link level headers is configured by the UIP_LLH_LEN define.
- *
- * \note The application data need not be placed in this buffer, so
- * the device driver must read it from the place pointed to by the
- * uip_appdata pointer as illustrated by the following example:
- \code
- void
- devicedriver_send(void)
- {
-    hwsend(&uip_buf[0], UIP_LLH_LEN);
-    if(uip_len <= UIP_LLH_LEN + UIP_TCPIP_HLEN) {
-      hwsend(&uip_buf[UIP_LLH_LEN], uip_len - UIP_LLH_LEN);
-    } else {
-      hwsend(&uip_buf[UIP_LLH_LEN], UIP_TCPIP_HLEN);
-      hwsend(uip_appdata, uip_len - UIP_TCPIP_HLEN - UIP_LLH_LEN);
-    }
- }
- \endcode
- */
-extern u8_t uip_buf[UIP_BUFSIZE+2];
+#define uip_poll_conn(__uip, conn) do { \
+  __uip->conn = conn;                   \
+  uip_process(__uip, UIP_POLL_REQUEST); \
+} while (0)
 
 /** @} */
 
@@ -366,7 +514,7 @@ extern u8_t uip_buf[UIP_BUFSIZE+2];
 /* Functions that are used by the uIP application program. Opening and
  * closing connections, sending and receiving data, etc. is all
  * handled by the functions below.
-*/
+ */
 /**
  * \defgroup uipappfunc uIP application functions
  * @{
@@ -386,7 +534,7 @@ extern u8_t uip_buf[UIP_BUFSIZE+2];
  *
  * \param port A 16-bit port number in network byte order.
  */
-void uip_listen(u16_t port);
+void uip_listen(uip_t uip, uint16_t port);
 
 /**
  * Stop listening to the specified port.
@@ -400,7 +548,7 @@ void uip_listen(u16_t port);
  *
  * \param port A 16-bit port number in network byte order.
  */
-void uip_unlisten(u16_t port);
+void uip_unlisten(uip_t uip, uint16_t port);
 
 /**
  * Connect to a remote host using TCP.
@@ -434,9 +582,7 @@ void uip_unlisten(u16_t port);
  * or NULL if no connection could be allocated.
  *
  */
-struct uip_conn *uip_connect(uip_ipaddr_t *ripaddr, u16_t port);
-
-
+struct uip_conn *uip_connect(uip_t uip, uip_ipaddr_t *ripaddr, uint16_t port);
 
 /**
  * \internal
@@ -474,7 +620,7 @@ struct uip_conn *uip_connect(uip_ipaddr_t *ripaddr, u16_t port);
  *
  * \hideinitializer
  */
-void uip_send(const void *data, int len);
+void uip_send(uip_t uip, const void *data, int len);
 
 /**
  * The length of any incoming data that is currently avaliable (if avaliable)
@@ -486,7 +632,7 @@ void uip_send(const void *data, int len);
  * \hideinitializer
  */
 /*void uip_datalen(void);*/
-#define uip_datalen()       uip_len
+#define uip_datalen(__uip)  __uip->len
 
 /**
  * The length of any out-of-band data (urgent data) that has arrived
@@ -497,7 +643,7 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_urgdatalen()    uip_urglen
+#define uip_urgdatalen(__uip) __uip->urglen
 
 /**
  * Close the current connection.
@@ -506,7 +652,7 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_close()         (uip_flags = UIP_CLOSE)
+#define uip_close(__uip)  (__uip->flags = UIP_CLOSE)
 
 /**
  * Abort the current connection.
@@ -517,7 +663,7 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_abort()         (uip_flags = UIP_ABORT)
+#define uip_abort(__uip)  (__uip->flags = UIP_ABORT)
 
 /**
  * Tell the sending host to stop sending data.
@@ -527,7 +673,7 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_stop()          (uip_conn->tcpstateflags |= UIP_STOPPED)
+#define uip_stop(__uip) (__uip->conn->tcpstateflags |= UIP_STOPPED)
 
 /**
  * Find out if the current connection has been previously stopped with
@@ -535,7 +681,7 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_stopped(conn)   ((conn)->tcpstateflags & UIP_STOPPED)
+#define uip_stopped(conn) ((conn)->tcpstateflags & UIP_STOPPED)
 
 /**
  * Restart the current connection, if is has previously been stopped
@@ -546,13 +692,15 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_restart()         do { uip_flags |= UIP_NEWDATA; \
-                                   uip_conn->tcpstateflags &= ~UIP_STOPPED; \
-                              } while(0)
+#define uip_restart(__uip) do {               \
+  __uip->flags |= UIP_NEWDATA;                \
+  __uip->conn->tcpstateflags &= ~UIP_STOPPED; \
+} while(0)
 
-
-/* uIP tests that can be made to determine in what state the current
-   connection is, and what the application function should do. */
+/*
+ * uIP tests that can be made to determine in what state the current connection
+ * is, and what the application function should do.
+ */
 
 /**
  * Is new incoming data available?
@@ -563,7 +711,7 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_newdata()   (uip_flags & UIP_NEWDATA)
+#define uip_newdata(__uip)  (__uip->flags & UIP_NEWDATA)
 
 /**
  * Has previously sent data been acknowledged?
@@ -574,7 +722,7 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_acked()   (uip_flags & UIP_ACKDATA)
+#define uip_acked(__uip)  (__uip->flags & UIP_ACKDATA)
 
 /**
  * Has the connection just been connected?
@@ -586,7 +734,7 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_connected() (uip_flags & UIP_CONNECTED)
+#define uip_connected(__uip)  (__uip->flags & UIP_CONNECTED)
 
 /**
  * Has the connection been closed by the other end?
@@ -596,7 +744,7 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_closed()    (uip_flags & UIP_CLOSE)
+#define uip_closed(__uip) (__uip->flags & UIP_CLOSE)
 
 /**
  * Has the connection been aborted by the other end?
@@ -606,7 +754,7 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_aborted()    (uip_flags & UIP_ABORT)
+#define uip_aborted(__uip)  (__uip->flags & UIP_ABORT)
 
 /**
  * Has the connection timed out?
@@ -616,7 +764,7 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_timedout()    (uip_flags & UIP_TIMEDOUT)
+#define uip_timedout(__uip) (__uip->flags & UIP_TIMEDOUT)
 
 /**
  * Do we need to retransmit previously data?
@@ -628,7 +776,7 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_rexmit()     (uip_flags & UIP_REXMIT)
+#define uip_rexmit(__uip) (__uip->flags & UIP_REXMIT)
 
 /**
  * Is the connection being polled by uIP?
@@ -642,7 +790,7 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_poll()       (uip_flags & UIP_POLL)
+#define uip_poll(__uip) (__uip->flags & UIP_POLL)
 
 /**
  * Get the initial maxium segment size (MSS) of the current
@@ -650,7 +798,7 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_initialmss()             (uip_conn->initialmss)
+#define uip_initialmss(__uip) (__uip->conn->initialmss)
 
 /**
  * Get the current maxium segment size that can be sent on the current
@@ -663,7 +811,7 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_mss()             (uip_conn->mss)
+#define uip_mss(__uip)  (__uip->conn->mss)
 
 /** @} */
 
@@ -704,27 +852,9 @@ void uip_send(const void *data, int len);
  * \hideinitializer
  */
 #define uip_ipaddr(addr, addr0,addr1,addr2,addr3) do { \
-                     ((u16_t *)(addr))[0] = HTONS(((addr0) << 8) | (addr1)); \
-                     ((u16_t *)(addr))[1] = HTONS(((addr2) << 8) | (addr3)); \
-                  } while(0)
-
-/**
- * Construct an IPv6 address from eight 16-bit words.
- *
- * This function constructs an IPv6 address.
- *
- * \hideinitializer
- */
-#define uip_ip6addr(addr, addr0,addr1,addr2,addr3,addr4,addr5,addr6,addr7) do { \
-                     ((u16_t *)(addr))[0] = HTONS((addr0)); \
-                     ((u16_t *)(addr))[1] = HTONS((addr1)); \
-                     ((u16_t *)(addr))[2] = HTONS((addr2)); \
-                     ((u16_t *)(addr))[3] = HTONS((addr3)); \
-                     ((u16_t *)(addr))[4] = HTONS((addr4)); \
-                     ((u16_t *)(addr))[5] = HTONS((addr5)); \
-                     ((u16_t *)(addr))[6] = HTONS((addr6)); \
-                     ((u16_t *)(addr))[7] = HTONS((addr7)); \
-                  } while(0)
+  ((uint16_t *)(addr))[0] = HTONS(((addr0) << 8) | (addr1)); \
+  ((uint16_t *)(addr))[1] = HTONS(((addr2) << 8) | (addr3)); \
+} while(0)
 
 /**
  * Copy an IP address to another IP address.
@@ -745,9 +875,9 @@ void uip_send(const void *data, int len);
  * \hideinitializer
  */
 #define uip_ipaddr_copy(dest, src) do { \
-                     ((u16_t *)dest)[0] = ((u16_t *)src)[0]; \
-                     ((u16_t *)dest)[1] = ((u16_t *)src)[1]; \
-                  } while(0)
+  ((uint16_t *)dest)[0] = ((uint16_t *)src)[0]; \
+  ((uint16_t *)dest)[1] = ((uint16_t *)src)[1]; \
+} while(0)
 
 /**
  * Compare two IP addresses
@@ -760,7 +890,7 @@ void uip_send(const void *data, int len);
 
  uip_ipaddr(&ipaddr1, 192,16,1,2);
  if(uip_ipaddr_cmp(&ipaddr2, &ipaddr1)) {
-    printf("They are the same");
+ printf("They are the same");
  }
  \endcode
  *
@@ -769,8 +899,9 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_ipaddr_cmp(addr1, addr2) (((u16_t *)addr1)[0] == ((u16_t *)addr2)[0] && \
-				      ((u16_t *)addr1)[1] == ((u16_t *)addr2)[1])
+#define uip_ipaddr_cmp(addr1, addr2)                \
+    (((uint16_t *)addr1)[0] == ((uint16_t *)addr2)[0] &&  \
+     ((uint16_t *)addr1)[1] == ((uint16_t *)addr2)[1])
 
 /**
  * Compare two IP addresses with netmasks
@@ -786,7 +917,7 @@ void uip_send(const void *data, int len);
  uip_ipaddr(&ipaddr1, 192,16,1,2);
  uip_ipaddr(&ipaddr2, 192,16,1,3);
  if(uip_ipaddr_maskcmp(&ipaddr1, &ipaddr2, &mask)) {
-    printf("They are the same");
+ printf("They are the same");
  }
  \endcode
  *
@@ -796,12 +927,11 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_ipaddr_maskcmp(addr1, addr2, mask) \
-                          (((((u16_t *)addr1)[0] & ((u16_t *)mask)[0]) == \
-                            (((u16_t *)addr2)[0] & ((u16_t *)mask)[0])) && \
-                           ((((u16_t *)addr1)[1] & ((u16_t *)mask)[1]) == \
-                            (((u16_t *)addr2)[1] & ((u16_t *)mask)[1])))
-
+#define uip_ipaddr_maskcmp(addr1, addr2, mask)      \
+  (((((uint16_t *)addr1)[0] & ((uint16_t *)mask)[0]) ==   \
+    (((uint16_t *)addr2)[0] & ((uint16_t *)mask)[0])) &&  \
+   ((((uint16_t *)addr1)[1] & ((uint16_t *)mask)[1]) ==   \
+    (((uint16_t *)addr2)[1] & ((uint16_t *)mask)[1])))
 
 /**
  * Mask out the network part of an IP address.
@@ -827,10 +957,10 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_ipaddr_mask(dest, src, mask) do { \
-                     ((u16_t *)dest)[0] = ((u16_t *)src)[0] & ((u16_t *)mask)[0]; \
-                     ((u16_t *)dest)[1] = ((u16_t *)src)[1] & ((u16_t *)mask)[1]; \
-                  } while(0)
+#define uip_ipaddr_mask(dest, src, mask) do {                   \
+  ((uint16_t *)dest)[0] = ((uint16_t *)src)[0] & ((uint16_t *)mask)[0];  \
+  ((uint16_t *)dest)[1] = ((uint16_t *)src)[1] & ((uint16_t *)mask)[1];  \
+} while(0)
 
 /**
  * Pick the first octet of an IP address.
@@ -840,7 +970,7 @@ void uip_send(const void *data, int len);
  * Example:
  \code
  uip_ipaddr_t ipaddr;
- u8_t octet;
+ uint8_t octet;
 
  uip_ipaddr(&ipaddr, 1,2,3,4);
  octet = uip_ipaddr1(&ipaddr);
@@ -850,7 +980,7 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_ipaddr1(addr) (htons(((u16_t *)(addr))[0]) >> 8)
+#define uip_ipaddr1(addr) (htons(((uint16_t *)(addr))[0]) >> 8)
 
 /**
  * Pick the second octet of an IP address.
@@ -860,7 +990,7 @@ void uip_send(const void *data, int len);
  * Example:
  \code
  uip_ipaddr_t ipaddr;
- u8_t octet;
+ uint8_t octet;
 
  uip_ipaddr(&ipaddr, 1,2,3,4);
  octet = uip_ipaddr2(&ipaddr);
@@ -870,7 +1000,7 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_ipaddr2(addr) (htons(((u16_t *)(addr))[0]) & 0xff)
+#define uip_ipaddr2(addr) (htons(((uint16_t *)(addr))[0]) & 0xff)
 
 /**
  * Pick the third octet of an IP address.
@@ -880,7 +1010,7 @@ void uip_send(const void *data, int len);
  * Example:
  \code
  uip_ipaddr_t ipaddr;
- u8_t octet;
+ uint8_t octet;
 
  uip_ipaddr(&ipaddr, 1,2,3,4);
  octet = uip_ipaddr3(&ipaddr);
@@ -890,7 +1020,7 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_ipaddr3(addr) (htons(((u16_t *)(addr))[1]) >> 8)
+#define uip_ipaddr3(addr) (htons(((uint16_t *)(addr))[1]) >> 8)
 
 /**
  * Pick the fourth octet of an IP address.
@@ -900,7 +1030,7 @@ void uip_send(const void *data, int len);
  * Example:
  \code
  uip_ipaddr_t ipaddr;
- u8_t octet;
+ uint8_t octet;
 
  uip_ipaddr(&ipaddr, 1,2,3,4);
  octet = uip_ipaddr4(&ipaddr);
@@ -910,7 +1040,7 @@ void uip_send(const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_ipaddr4(addr) (htons(((u16_t *)(addr))[1]) & 0xff)
+#define uip_ipaddr4(addr) (htons(((uint16_t *)(addr))[1]) & 0xff)
 
 /**
  * Convert 16-bit quantity from host byte order to network byte order.
@@ -925,7 +1055,7 @@ void uip_send(const void *data, int len);
 #   if UIP_BYTE_ORDER == UIP_BIG_ENDIAN
 #      define HTONS(n) (n)
 #   else /* UIP_BYTE_ORDER == UIP_BIG_ENDIAN */
-#      define HTONS(n) (u16_t)((((u16_t) (n)) << 8) | (((u16_t) (n)) >> 8))
+#      define HTONS(n) (uint16_t)((((uint16_t) (n)) << 8) | (((uint16_t) (n)) >> 8))
 #   endif /* UIP_BYTE_ORDER == UIP_BIG_ENDIAN */
 #else
 #error "HTONS already defined!"
@@ -939,7 +1069,7 @@ void uip_send(const void *data, int len);
  * network byte order, use the HTONS() macro instead.
  */
 #ifndef htons
-u16_t htons(u16_t val);
+uint16_t htons(uint16_t val);
 #endif /* htons */
 #ifndef ntohs
 #define ntohs htons
@@ -947,189 +1077,11 @@ u16_t htons(u16_t val);
 
 /** @} */
 
-/**
- * Pointer to the application data in the packet buffer.
- *
- * This pointer points to the application data when the application is
- * called. If the application wishes to send data, the application may
- * use this space to write the data into before calling uip_send().
- */
-extern void *uip_appdata;
-
-#if UIP_URGDATA > 0
-/* u8_t *uip_urgdata:
- *
- * This pointer points to any urgent data that has been received. Only
- * present if compiled with support for urgent data (UIP_URGDATA).
- */
-extern void *uip_urgdata;
-#endif /* UIP_URGDATA > 0 */
-
-
-/**
- * \defgroup uipdrivervars Variables used in uIP device drivers
- * @{
- *
- * uIP has a few global variables that are used in device drivers for
- * uIP.
- */
-
-/**
- * The length of the packet in the uip_buf buffer.
- *
- * The global variable uip_len holds the length of the packet in the
- * uip_buf buffer.
- *
- * When the network device driver calls the uIP input function,
- * uip_len should be set to the length of the packet in the uip_buf
- * buffer.
- *
- * When sending packets, the device driver should use the contents of
- * the uip_len variable to determine the length of the outgoing
- * packet.
- *
- */
-extern u16_t uip_len;
-
-/** @} */
-
-#if UIP_URGDATA > 0
-extern u16_t uip_urglen, uip_surglen;
-#endif /* UIP_URGDATA > 0 */
-
-
-/**
- * Representation of a uIP TCP connection.
- *
- * The uip_conn structure is used for identifying a connection. All
- * but one field in the structure are to be considered read-only by an
- * application. The only exception is the appstate field whos purpose
- * is to let the application store application-specific state (e.g.,
- * file pointers) for the connection. The type of this field is
- * configured in the "uipopt.h" header file.
- */
-struct uip_conn {
-  uip_ipaddr_t ripaddr;   /**< The IP address of the remote host. */
-
-  u16_t lport;        /**< The local TCP port, in network byte order. */
-  u16_t rport;        /**< The local remote TCP port, in network byte
-			 order. */
-
-  u8_t rcv_nxt[4];    /**< The sequence number that we expect to
-			 receive next. */
-  u8_t snd_nxt[4];    /**< The sequence number that was last sent by
-                         us. */
-  u16_t len;          /**< Length of the data that was previously sent. */
-  u16_t mss;          /**< Current maximum segment size for the
-			 connection. */
-  u16_t initialmss;   /**< Initial maximum segment size for the
-			 connection. */
-  u8_t sa;            /**< Retransmission time-out calculation state
-			 variable. */
-  u8_t sv;            /**< Retransmission time-out calculation state
-			 variable. */
-  u8_t rto;           /**< Retransmission time-out. */
-  u8_t tcpstateflags; /**< TCP state and flags. */
-  u8_t timer;         /**< The retransmission timer. */
-  u8_t nrtx;          /**< The number of retransmissions for the last
-			 segment sent. */
-
-  /** The application state. */
-  uip_tcp_appstate_t appstate;
-};
-
-
-/**
- * Pointer to the current TCP connection.
- *
- * The uip_conn pointer can be used to access the current TCP
- * connection.
- */
-extern struct uip_conn *uip_conn;
-/* The array containing all uIP connections. */
-extern struct uip_conn uip_conns[UIP_CONNS];
-/**
- * \addtogroup uiparch
- * @{
- */
-
-/**
- * 4-byte array used for the 32-bit sequence number calculations.
- */
-extern u8_t uip_acc32[4];
-
-/** @} */
-
-/**
- * The structure holding the TCP/IP statistics that are gathered if
- * UIP_STATISTICS is set to 1.
- *
- */
-struct uip_stats {
-  struct {
-    uip_stats_t drop;     /**< Number of dropped packets at the IP
-			     layer. */
-    uip_stats_t recv;     /**< Number of received packets at the IP
-			     layer. */
-    uip_stats_t sent;     /**< Number of sent packets at the IP
-			     layer. */
-    uip_stats_t vhlerr;   /**< Number of packets dropped due to wrong
-			     IP version or header length. */
-    uip_stats_t hblenerr; /**< Number of packets dropped due to wrong
-			     IP length, high byte. */
-    uip_stats_t lblenerr; /**< Number of packets dropped due to wrong
-			     IP length, low byte. */
-    uip_stats_t fragerr;  /**< Number of packets dropped since they
-			     were IP fragments. */
-    uip_stats_t chkerr;   /**< Number of packets dropped due to IP
-			     checksum errors. */
-    uip_stats_t protoerr; /**< Number of packets dropped since they
-			     were neither ICMP nor TCP. */
-  } ip;                   /**< IP statistics. */
-  struct {
-    uip_stats_t drop;     /**< Number of dropped ICMP packets. */
-    uip_stats_t recv;     /**< Number of received ICMP packets. */
-    uip_stats_t sent;     /**< Number of sent ICMP packets. */
-    uip_stats_t typeerr;  /**< Number of ICMP packets with a wrong
-			     type. */
-  } icmp;                 /**< ICMP statistics. */
-  struct {
-    uip_stats_t drop;     /**< Number of dropped TCP segments. */
-    uip_stats_t recv;     /**< Number of recived TCP segments. */
-    uip_stats_t sent;     /**< Number of sent TCP segments. */
-    uip_stats_t chkerr;   /**< Number of TCP segments with a bad
-			     checksum. */
-    uip_stats_t ackerr;   /**< Number of TCP segments with a bad ACK
-			     number. */
-    uip_stats_t rst;      /**< Number of recevied TCP RST (reset) segments. */
-    uip_stats_t rexmit;   /**< Number of retransmitted TCP segments. */
-    uip_stats_t syndrop;  /**< Number of dropped SYNs due to too few
-			     connections was avaliable. */
-    uip_stats_t synrst;   /**< Number of SYNs for closed ports,
-			     triggering a RST. */
-  } tcp;                  /**< TCP statistics. */
-};
-
-/**
- * The uIP TCP/IP statistics.
- *
- * This is the variable in which the uIP TCP/IP statistics are gathered.
- */
-extern struct uip_stats uip_stat;
-
-
 /*---------------------------------------------------------------------------*/
 /* All the stuff below this point is internal to uIP and should not be
  * used directly by an application or by a device driver.
  */
 /*---------------------------------------------------------------------------*/
-/* u8_t uip_flags:
- *
- * When the application is called, uip_flags will contain the flags
- * that are defined in this file. Please read below for more
- * infomation.
- */
-extern u8_t uip_flags;
 
 /* The following flags may be set in the global variable uip_flags
    before calling the application callback. The UIP_ACKDATA,
@@ -1139,55 +1091,55 @@ extern u8_t uip_flags;
    functions/macros. */
 
 #define UIP_ACKDATA   1     /* Signifies that the outstanding data was
-			       acked and the application should send
-			       out new data instead of retransmitting
-			       the last data. */
+                               acked and the application should send
+                               out new data instead of retransmitting
+                               the last data. */
 #define UIP_NEWDATA   2     /* Flags the fact that the peer has sent
-			       us new data. */
+                               us new data. */
 #define UIP_REXMIT    4     /* Tells the application to retransmit the
-			       data that was last sent. */
+                               data that was last sent. */
 #define UIP_POLL      8     /* Used for polling the application, to
-			       check if the application has data that
-			       it wants to send. */
+                               check if the application has data that
+                               it wants to send. */
 #define UIP_CLOSE     16    /* The remote host has closed the
-			       connection, thus the connection has
-			       gone away. Or the application signals
-			       that it wants to close the
-			       connection. */
+                               connection, thus the connection has
+                               gone away. Or the application signals
+                               that it wants to close the
+                               connection. */
 #define UIP_ABORT     32    /* The remote host has aborted the
-			       connection, thus the connection has
-			       gone away. Or the application signals
-			       that it wants to abort the
-			       connection. */
+                               connection, thus the connection has
+                               gone away. Or the application signals
+                               that it wants to abort the
+                               connection. */
 #define UIP_CONNECTED 64    /* We have got a connection from a remote
                                host and have set up a new connection
                                for it, or an active connection has
                                been successfully established. */
 
 #define UIP_TIMEDOUT  128   /* The connection has been aborted due to
-			       too many retransmissions. */
+                               too many retransmissions. */
 
 /* uip_process(flag):
- *
- * The actual uIP function which does all the work.
- */
-void uip_process(u8_t flag);
+  *
+  * The actual uIP function which does all the work.
+  */
+void uip_process(uip_t uip, uint8_t flag);
 
 /* The following flags are passed as an argument to the uip_process()
-   function. They are used to distinguish between the two cases where
-   uip_process() is called. It can be called either because we have
-   incoming data that should be processed, or because the periodic
-   timer has fired. These values are never used directly, but only in
-   the macrose defined in this file. */
+ * function. They are used to distinguish between the two cases where
+ * uip_process() is called. It can be called either because we have
+ * incoming data that should be processed, or because the periodic
+ * timer has fired. These values are never used directly, but only in
+ * the macrose defined in this file. */
 
 #define UIP_DATA          1     /* Tells uIP that there is incoming
-				   data in the uip_buf buffer. The
-				   length of the data is stored in the
-				   global variable uip_len. */
+                                   data in the uip_buf buffer. The
+                                   length of the data is stored in the
+                                   global variable uip_len. */
 #define UIP_TIMER         2     /* Tells uIP that the periodic timer
-				   has fired. */
+                                   has fired. */
 #define UIP_POLL_REQUEST  3     /* Tells uIP that a connection should
-				   be polled. */
+                                   be polled. */
 /* The TCP states used in the uip_conn->tcpstateflags. */
 #define UIP_CLOSED      0
 #define UIP_SYN_RCVD    1
@@ -1204,49 +1156,66 @@ void uip_process(u8_t flag);
 
 /* The TCP and IP headers. */
 struct uip_tcpip_hdr {
-  u8_t vhl,
-    tos,
-    len[2],
-    ipid[2],
-    ipoffset[2],
-    ttl,
-    proto;
-  u16_t ipchksum;
-  u16_t srcipaddr[2],
-    destipaddr[2];
+  uint8_t vhl,
+       tos,
+       len[2],
+       ipid[2],
+       ipoffset[2],
+       ttl,
+       proto;
+  uint16_t ipchksum;
+  uint16_t srcipaddr[2],
+        destipaddr[2];
 
   /* TCP header. */
-  u16_t srcport,
-    destport;
-  u8_t seqno[4],
-    ackno[4],
-    tcpoffset,
-    flags,
-    wnd[2];
-  u16_t tcpchksum;
-  u8_t urgp[2];
-  u8_t optdata[4];
+  uint16_t srcport,
+        destport;
+  uint8_t seqno[4],
+       ackno[4],
+       tcpoffset,
+       flags,
+       wnd[2];
+  uint16_t tcpchksum;
+  uint8_t urgp[2];
+  uint8_t optdata[4];
 };
 
 /* The ICMP and IP headers. */
 struct uip_icmpip_hdr {
   /* IPv4 header. */
-  u8_t vhl,
-    tos,
-    len[2],
-    ipid[2],
-    ipoffset[2],
-    ttl,
-    proto;
-  u16_t ipchksum;
-  u16_t srcipaddr[2],
-    destipaddr[2];
+  uint8_t vhl,
+       tos,
+       len[2],
+       ipid[2],
+       ipoffset[2],
+       ttl,
+       proto;
+  uint16_t ipchksum;
+  uint16_t srcipaddr[2],
+        destipaddr[2];
 
   /* ICMP (echo) header. */
-  u8_t type, icode;
-  u16_t icmpchksum;
-  u16_t id, seqno;
+  uint8_t type, icode;
+  uint16_t icmpchksum;
+  uint16_t id, seqno;
 };
+
+#define TCP_FIN 0x01
+#define TCP_SYN 0x02
+#define TCP_RST 0x04
+#define TCP_PSH 0x08
+#define TCP_ACK 0x10
+#define TCP_URG 0x20
+#define TCP_CTL 0x3f
+
+#define TCP_OPT_END     0   /* End of TCP options list */
+#define TCP_OPT_NOOP    1   /* "No-operation" TCP option */
+#define TCP_OPT_MSS     2   /* Maximum segment size TCP option */
+
+#define TCP_OPT_MSS_LEN 4   /* Length of TCP MSS option. */
+
+#define ICMP_ECHO_REPLY 0
+#define ICMP_ECHO       8
 
 /**
  * The buffer size available for user data in the \ref uip_buf buffer.
@@ -1264,7 +1233,6 @@ struct uip_icmpip_hdr {
  */
 #define UIP_APPDATA_SIZE (UIP_BUFSIZE - UIP_LLH_LEN - UIP_TCPIP_HLEN)
 
-
 #define UIP_PROTO_ICMP  1
 #define UIP_PROTO_TCP   6
 #define UIP_PROTO_ICMP6 58
@@ -1272,26 +1240,8 @@ struct uip_icmpip_hdr {
 /* Header sizes. */
 #define UIP_IPH_LEN    20    /* Size of IP header */
 #define UIP_TCPH_LEN   20    /* Size of TCP header */
-#define UIP_IPTCPH_LEN (UIP_TCPH_LEN + UIP_IPH_LEN)    /* Size of IP +
-							  TCP
-							  header */
+#define UIP_IPTCPH_LEN (UIP_TCPH_LEN + UIP_IPH_LEN)    /* Size of IP + TCP */
 #define UIP_TCPIP_HLEN UIP_IPTCPH_LEN
-
-
-#if UIP_FIXEDADDR
-extern const uip_ipaddr_t uip_hostaddr, uip_netmask, uip_draddr;
-#else /* UIP_FIXEDADDR */
-extern uip_ipaddr_t uip_hostaddr, uip_netmask, uip_draddr;
-#endif /* UIP_FIXEDADDR */
-
-
-
-/**
- * Representation of a 48-bit Ethernet address.
- */
-struct uip_eth_addr {
-  u8_t addr[6];
-};
 
 /**
  * Calculate the Internet checksum over a buffer.
@@ -1309,7 +1259,7 @@ struct uip_eth_addr {
  *
  * \return The Internet checksum of the buffer.
  */
-u16_t uip_chksum(u16_t *buf, u16_t len);
+uint16_t uip_chksum(uint16_t *buf, uint16_t len);
 
 /**
  * Calculate the IP header checksum of the packet header in uip_buf.
@@ -1320,7 +1270,7 @@ u16_t uip_chksum(u16_t *buf, u16_t len);
  * \return The IP header checksum of the IP header in the uip_buf
  * buffer.
  */
-u16_t uip_ipchksum(void);
+uint16_t uip_ipchksum(uip_t uip);
 
 /**
  * Calculate the TCP checksum of the packet in uip_buf and uip_appdata.
@@ -1331,7 +1281,7 @@ u16_t uip_ipchksum(void);
  * \return The TCP checksum of the TCP segment in uip_buf and pointed
  * to by uip_appdata.
  */
-u16_t uip_tcpchksum(void);
+uint16_t uip_tcpchksum(uip_t uip);
 
 #endif /* __UIP_H__ */
 

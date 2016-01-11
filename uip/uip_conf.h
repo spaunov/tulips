@@ -55,25 +55,7 @@
 #ifndef __UIP_CONF_H__
 #define __UIP_CONF_H__
 
-#include <inttypes.h>
-
-/**
- * 8 bit datatype
- *
- * This typedef defines the 8-bit type used throughout uIP.
- *
- * \hideinitializer
- */
-typedef uint8_t u8_t;
-
-/**
- * 16 bit datatype
- *
- * This typedef defines the 16-bit type used throughout uIP.
- *
- * \hideinitializer
- */
-typedef uint16_t u16_t;
+#include <stdint.h>
 
 /**
  * Statistics datatype
@@ -83,7 +65,7 @@ typedef uint16_t u16_t;
  *
  * \hideinitializer
  */
-typedef unsigned short uip_stats_t;
+typedef uint16_t uip_stats_t;
 
 /**
  * Maximum number of TCP connections.
@@ -126,8 +108,6 @@ typedef unsigned short uip_stats_t;
  * \hideinitializer
  */
 #define UIP_CONF_STATISTICS      1
-
-#include <app/webclient.h>
 
 #endif /* __UIP_CONF_H__ */
 

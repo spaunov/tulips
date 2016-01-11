@@ -135,7 +135,7 @@ webclient_close(void)
 }
 /*-----------------------------------------------------------------------------------*/
 unsigned char
-webclient_get(char *host, u16_t port, char *file)
+webclient_get(uip_t uip, char *host, uint16_t port, char *file)
 {
   struct uip_conn *conn;
   uip_ipaddr_t *ipaddr;
@@ -147,7 +147,7 @@ webclient_get(char *host, u16_t port, char *file)
     return 0;
   }
 
-  conn = uip_connect(ipaddr, htons(port));
+  conn = uip_connect(uip, ipaddr, htons(port));
   if(conn == NULL) return 0;
 
   s.port = port;
@@ -166,14 +166,14 @@ copy_string(char *dest, const char *src, unsigned char len)
 }
 /*-----------------------------------------------------------------------------------*/
 static void
-senddata(void)
+senddata(uip_t uip)
 {
-  u16_t len;
+  uint16_t len;
   char *getrequest;
   char *cptr;
 
   if(s.getrequestleft > 0) {
-    cptr = getrequest = (char *)uip_appdata;
+    cptr = getrequest = (char *)uip->appdata;
 
     cptr = copy_string(cptr, http_get, sizeof(http_get) - 1);
     cptr = copy_string(cptr, s.file, strlen(s.file));
@@ -189,35 +189,30 @@ senddata(void)
     cptr = copy_string(cptr, http_user_agent_fields,
                        strlen(http_user_agent_fields));
 
-    len = s.getrequestleft > uip_mss()?
-      uip_mss():
-      s.getrequestleft;
-    uip_send(&(getrequest[s.getrequestptr]), len);
+    len = s.getrequestleft > uip_mss(uip)?  uip_mss(uip): s.getrequestleft;
+    uip_send(uip, &(getrequest[s.getrequestptr]), len);
   }
 }
 /*-----------------------------------------------------------------------------------*/
 static void
-acked(void)
+acked(uip_t uip)
 {
-  u16_t len;
-
+  uint16_t len;
   if(s.getrequestleft > 0) {
-    len = s.getrequestleft > uip_mss()?
-      uip_mss():
-      s.getrequestleft;
+    len = s.getrequestleft > uip_mss(uip)?  uip_mss(uip): s.getrequestleft;
     s.getrequestleft -= len;
     s.getrequestptr += len;
   }
 }
 /*-----------------------------------------------------------------------------------*/
-static u16_t
-parse_statusline(u16_t len)
+static uint16_t
+parse_statusline(uip_t uip, uint16_t len)
 {
   char *cptr;
 
   while(len > 0 && s.httpheaderlineptr < sizeof(s.httpheaderline)) {
-    s.httpheaderline[s.httpheaderlineptr] = *(char *)uip_appdata;
-    uip_appdata = ((char *)uip_appdata) + 1;
+    s.httpheaderline[s.httpheaderlineptr] = *(char *)uip->appdata;
+    uip->appdata = ((char *)uip->appdata) + 1;
     --len;
     if(s.httpheaderline[s.httpheaderlineptr] == ISO_nl) {
 
@@ -239,7 +234,7 @@ parse_statusline(u16_t len)
           s.httpheaderline[s.httpheaderlineptr - 1] = 0;
         }
       } else {
-        uip_abort();
+        uip_abort(uip);
         webclient_aborted();
         return 0;
       }
@@ -277,15 +272,15 @@ casecmp(char *str1, const char *str2, char len)
   return 0;
 }
 /*-----------------------------------------------------------------------------------*/
-static u16_t
-parse_headers(u16_t len)
+static uint16_t
+parse_headers(uip_t uip, uint16_t len)
 {
   char *cptr;
   static unsigned char i;
 
   while(len > 0 && s.httpheaderlineptr < sizeof(s.httpheaderline)) {
-    s.httpheaderline[s.httpheaderlineptr] = *(char *)uip_appdata;
-    uip_appdata = ((char *)uip_appdata) + 1;
+    s.httpheaderline[s.httpheaderlineptr] = *(char *)uip->appdata;
+    uip->appdata = ((char *)uip->appdata) + 1;
     --len;
     if(s.httpheaderline[s.httpheaderlineptr] == ISO_nl) {
       /* We have an entire HTTP header line in s.httpheaderline, so
@@ -344,66 +339,66 @@ parse_headers(u16_t len)
 }
 /*-----------------------------------------------------------------------------------*/
 static void
-newdata(void)
+newdata(uip_t uip)
 {
-  u16_t len;
+  uint16_t len;
 
-  len = uip_datalen();
+  len = uip_datalen(uip);
 
   if(s.state == WEBCLIENT_STATE_STATUSLINE) {
-    len = parse_statusline(len);
+    len = parse_statusline(uip, len);
   }
 
   if(s.state == WEBCLIENT_STATE_HEADERS && len > 0) {
-    len = parse_headers(len);
+    len = parse_headers(uip, len);
   }
 
   if(len > 0 && s.state == WEBCLIENT_STATE_DATA &&
      s.httpflag != HTTPFLAG_MOVED) {
-    webclient_datahandler((char *)uip_appdata, len);
+    webclient_datahandler((char *)uip->appdata, len);
   }
 }
 /*-----------------------------------------------------------------------------------*/
 void
-webclient_appcall(void)
+webclient_appcall(uip_t uip)
 {
-  if(uip_connected()) {
+  if(uip_connected(uip)) {
     s.timer = 0;
     s.state = WEBCLIENT_STATE_STATUSLINE;
-    senddata();
+    senddata(uip);
     webclient_connected();
     return;
   }
   if(s.state == WEBCLIENT_STATE_CLOSE) {
     webclient_closed();
-    uip_close();
+    uip_close(uip);
     return;
   }
-  if(uip_aborted()) {
+  if(uip_aborted(uip)) {
     webclient_aborted();
   }
-  if(uip_timedout()) {
+  if(uip_timedout(uip)) {
     webclient_timedout();
   }
-  if(uip_acked()) {
+  if(uip_acked(uip)) {
     s.timer = 0;
-    acked();
+    acked(uip);
   }
-  if(uip_newdata()) {
+  if(uip_newdata(uip)) {
     s.timer = 0;
-    newdata();
+    newdata(uip);
   }
-  if(uip_rexmit() || uip_newdata() || uip_acked()) {
-    senddata();
-  } else if(uip_poll()) {
+  if(uip_rexmit(uip) || uip_newdata(uip) || uip_acked(uip)) {
+    senddata(uip);
+  } else if(uip_poll(uip)) {
     ++s.timer;
     if(s.timer == WEBCLIENT_TIMEOUT) {
       webclient_timedout();
-      uip_abort();
+      uip_abort(uip);
       return;
     }
   }
-  if(uip_closed()) {
+  if(uip_closed(uip)) {
     if(s.httpflag != HTTPFLAG_MOVED) {
       /* Send NULL data to signal EOF. */
       webclient_datahandler(NULL, 0);

@@ -38,18 +38,20 @@
 
 #include "tapdev.h"
 #include "webclient.h"
+#include <malloc.h>
 #include <stdio.h>
 #include <string.h>
 #include <uip/timer.h>
 #include <uip/uip.h>
 #include <uip/uip_arp.h>
 
-#define BUF ((struct uip_eth_hdr *)&uip_buf[0])
+#define BUF(uip) ((struct uip_eth_hdr *)&uip->buf[0])
 
 int
 main(void)
 {
   int i;
+  uip_t uip = (uip_t)memalign(64, sizeof(struct uip));
   uip_ipaddr_t ipaddr;
   struct timer periodic_timer, arp_timer;
 
@@ -57,50 +59,49 @@ main(void)
   timer_set(&arp_timer, CLOCK_SECOND * 10);
 
   tapdev_init();
-  uip_init();
+  uip_init(uip, webclient_appcall);
 
   uip_ipaddr(ipaddr, 10, 1, 0, 2);
-  uip_sethostaddr(ipaddr);
+  uip_sethostaddr(uip, ipaddr);
   uip_ipaddr(ipaddr, 10, 1, 0, 1);
-  uip_setdraddr(ipaddr);
+  uip_setdraddr(uip, ipaddr);
   uip_ipaddr(ipaddr, 255,255,255,0);
-  uip_setnetmask(ipaddr);
+  uip_setnetmask(uip, ipaddr);
 
   webclient_init();
-  webclient_get("172.16.55.137", 8000, "/");
+  webclient_get(uip, "172.16.55.137", 8000, "/");
 
   while(1) {
-    uip_len = tapdev_read();
-    if(uip_len > 0) {
-      if(BUF->type == htons(UIP_ETHTYPE_IP)) {
-        uip_arp_ipin();
-        uip_input();
+    if(tapdev_read(uip) > 0) {
+      if(BUF(uip)->type == htons(UIP_ETHTYPE_IP)) {
+        uip_arp_ipin(uip);
+        uip_input(uip);
         /* If the above function invocation resulted in data that
            should be sent out on the network, the global variable
            uip_len is set to a value > 0. */
-        if(uip_len > 0) {
-          uip_arp_out();
-          tapdev_send();
+        if(uip->len > 0) {
+          uip_arp_out(uip);
+          tapdev_send(uip);
         }
-      } else if(BUF->type == htons(UIP_ETHTYPE_ARP)) {
-        uip_arp_arpin();
+      } else if(BUF(uip)->type == htons(UIP_ETHTYPE_ARP)) {
+        uip_arp_arpin(uip);
         /* If the above function invocation resulted in data that
            should be sent out on the network, the global variable
            uip_len is set to a value > 0. */
-        if(uip_len > 0) {
-          tapdev_send();
+        if(uip->len > 0) {
+          tapdev_send(uip);
         }
       }
     } else if(timer_expired(&periodic_timer)) {
       timer_reset(&periodic_timer);
       for(i = 0; i < UIP_CONNS; i++) {
-        uip_periodic(i);
+        uip_periodic(uip, i);
         /* If the above function invocation resulted in data that
            should be sent out on the network, the global variable
            uip_len is set to a value > 0. */
-        if(uip_len > 0) {
-          uip_arp_out();
-          tapdev_send();
+        if(uip->len > 0) {
+          uip_arp_out(uip);
+          tapdev_send(uip);
         }
       }
       /* Call the ARP timer function every 10 seconds. */
@@ -139,7 +140,7 @@ webclient_connected(void)
   printf("Webclient: connected, waiting for data...\n");
 }
 void
-webclient_datahandler(char *data, u16_t len)
+webclient_datahandler(char *data, uint16_t len)
 {
   if (len > 0) {
     char sbuf[2048] = { 0 };
