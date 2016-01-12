@@ -390,13 +390,14 @@ webclient_appcall(uip_t uip)
   }
   if(uip_rexmit(uip) || uip_newdata(uip) || uip_acked(uip)) {
     senddata(uip);
-  } else if(uip_poll(uip)) {
+  } else if(uip_clk_poll(uip)) {
     ++s.timer;
     if(s.timer == WEBCLIENT_TIMEOUT) {
       webclient_timedout();
       uip_abort(uip);
       return;
     }
+  } else if(uip_req_poll(uip)) {
   }
   if(uip_closed(uip)) {
     if(s.httpflag != HTTPFLAG_MOVED) {

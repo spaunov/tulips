@@ -112,6 +112,15 @@ main(void)
         timer_reset(&arp_timer);
         uip_arp_timer(arp);
       }
+    } else for(i = 0; i < UIP_CONNS; i++) {
+      uip_pollit(uip, i);
+      /* If the above function invocation resulted in data that
+         should be sent out on the network, the global variable
+         uip_len is set to a value > 0. */
+      if(uip->len > 0) {
+        uip_arp_out(uip, arp);
+        tapdev_send(uip);
+      }
     }
   }
   return 0;

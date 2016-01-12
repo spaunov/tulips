@@ -190,7 +190,7 @@ typedef struct uip {
 #endif /* UIP_URGDATA > 0 */
   uint16_t            len;
   uint16_t            slen;
-  uint8_t             flags;
+  uint16_t            flags;
   struct uip_conn *   conn;
   struct uip_conn     conns[UIP_CONNS];
   uint16_t            listenports[UIP_LISTENPORTS];
@@ -466,6 +466,14 @@ ethernet_devicedriver_send();
 } while (0)
 
 /**
+ * Poll a connection by its index.
+ */
+#define uip_pollit(__uip, __conn) do {    \
+  uip->conn = &__uip->conns[__conn];      \
+  uip_process(__uip, UIP_POLL_REQUEST);   \
+} while (0)
+
+/**
  * Check if a connection is active.
  *
  * \param conn The number of the connection which is to be periodically polled.
@@ -488,9 +496,9 @@ ethernet_devicedriver_send();
  *
  * \hideinitializer
  */
-#define uip_periodic_conn(__uip, conn) do { \
-  __uip->conn = conn;                       \
-  uip_process(__uip, UIP_TIMER);            \
+#define uip_periodic_conn(__uip, __conn) do { \
+  __uip->conn = __conn;                       \
+  uip_process(__uip, UIP_TIMER);              \
 } while (0)
 
 /**
@@ -504,9 +512,9 @@ ethernet_devicedriver_send();
  *
  * \hideinitializer
  */
-#define uip_poll_conn(__uip, conn) do { \
-  __uip->conn = conn;                   \
-  uip_process(__uip, UIP_POLL_REQUEST); \
+#define uip_poll_conn(__uip, __conn) do { \
+  __uip->conn = __conn;                   \
+  uip_process(__uip, UIP_POLL_REQUEST);   \
 } while (0)
 
 /** @} */
@@ -780,6 +788,18 @@ void uip_send(uip_t uip, const void *data, int len);
 #define uip_rexmit(__uip) (__uip->flags & UIP_REXMIT)
 
 /**
+ * Is the connection being polled by user request?
+ *
+ * Is non-zero if the reason the application is invoked by user request.
+ *
+ * The polling event can be used for sending data without having to
+ * wait for the remote host to send data.
+ *
+ * \hideinitializer
+ */
+#define uip_req_poll(__uip) (__uip->flags & UIP_REQ_POLL)
+
+/**
  * Is the connection being polled by uIP?
  *
  * Is non-zero if the reason the application is invoked is that the
@@ -791,7 +811,7 @@ void uip_send(uip_t uip, const void *data, int len);
  *
  * \hideinitializer
  */
-#define uip_poll(__uip) (__uip->flags & UIP_POLL)
+#define uip_clk_poll(__uip) (__uip->flags & UIP_CLK_POLL)
 
 /**
  * Get the initial maxium segment size (MSS) of the current
@@ -1099,25 +1119,28 @@ uint16_t htons(uint16_t val);
                                us new data. */
 #define UIP_REXMIT    4     /* Tells the application to retransmit the
                                data that was last sent. */
-#define UIP_POLL      8     /* Used for polling the application, to
+#define UIP_REQ_POLL  8     /* Used for polling the application, to
                                check if the application has data that
                                it wants to send. */
-#define UIP_CLOSE     16    /* The remote host has closed the
+#define UIP_CLK_POLL  16    /* Used for polling the application, to
+                               check if the application has data that
+                               it wants to send. */
+#define UIP_CLOSE     32    /* The remote host has closed the
                                connection, thus the connection has
                                gone away. Or the application signals
                                that it wants to close the
                                connection. */
-#define UIP_ABORT     32    /* The remote host has aborted the
+#define UIP_ABORT     64    /* The remote host has aborted the
                                connection, thus the connection has
                                gone away. Or the application signals
                                that it wants to abort the
                                connection. */
-#define UIP_CONNECTED 64    /* We have got a connection from a remote
+#define UIP_CONNECTED 128    /* We have got a connection from a remote
                                host and have set up a new connection
                                for it, or an active connection has
                                been successfully established. */
 
-#define UIP_TIMEDOUT  128   /* The connection has been aborted due to
+#define UIP_TIMEDOUT  256   /* The connection has been aborted due to
                                too many retransmissions. */
 
 /* uip_process(flag):
