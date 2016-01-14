@@ -1,0 +1,23 @@
+{
+	"settings": {
+		"tab_size": 2,
+		"translate_tabs_to_spaces": false
+	},
+	"folders":
+	[
+	{
+		"path": "."
+	}
+	],
+	"SublimeLinter":
+	{
+		"linters":
+		{
+			"clang": {
+				"extra_flags": "-Wall -I${project_folder}",
+				"include_dirs": [
+				]
+			}
+		}
+	}
+}

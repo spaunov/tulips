@@ -6,13 +6,15 @@
 #include <gtest/gtest.h>
 #include <thread>
 
-namespace {
+namespace
+{
 
 #define ITERATIONS 1000
 
-static void reader_thread(tulips_fifo_t fifo) {
+static void reader_thread(tulips_fifo_t fifo)
+{
   uint64_t data = 1;
-  void * result = NULL;
+  void *result = NULL;
   tulips_fifo_error_t error;
   for (size_t i = 0; i < ITERATIONS; i += 1) {
     do {
@@ -25,7 +27,8 @@ static void reader_thread(tulips_fifo_t fifo) {
   }
 }
 
-static void writer_thread(tulips_fifo_t fifo) {
+static void writer_thread(tulips_fifo_t fifo)
+{
   uint64_t data = 1;
   tulips_fifo_error_t error;
   for (size_t i = 0; i < ITERATIONS; i += 1) {
@@ -36,9 +39,10 @@ static void writer_thread(tulips_fifo_t fifo) {
   }
 }
 
-}  // namespace
+} // namespace
 
-TEST(FIFO, CreateAndDestroy) {
+TEST(FIFO, CreateAndDestroy)
+{
   tulips_fifo_t fifo = TULIPS_FIFO_DEFAULT_VALUE;
   tulips_fifo_error_t error;
   /**
@@ -80,7 +84,8 @@ TEST(FIFO, CreateAndDestroy) {
   ASSERT_EQ(TULIPS_FIFO_IS_NULL, error);
 }
 
-TEST(FIFO, ReadWrite) {
+TEST(FIFO, ReadWrite)
+{
   tulips_fifo_t fifo = TULIPS_FIFO_DEFAULT_VALUE;
   tulips_fifo_error_t error;
   /**
@@ -91,7 +96,7 @@ TEST(FIFO, ReadWrite) {
   /**
    * Front failure
    */
-  void * result = NULL;
+  void *result = NULL;
   error = tulips_fifo_front(fifo, &result);
   ASSERT_EQ(TULIPS_FIFO_EMPTY, error);
   /**
@@ -102,7 +107,7 @@ TEST(FIFO, ReadWrite) {
   /**
    * Push success
    */
-  const char * data = "hi to the world!";
+  const char *data = "hi to the world!";
   error = tulips_fifo_push(fifo, data);
   ASSERT_EQ(TULIPS_FIFO_OK, error);
   /*
@@ -138,7 +143,8 @@ TEST(FIFO, ReadWrite) {
   ASSERT_EQ(TULIPS_FIFO_OK, error);
 }
 
-TEST(FIFO, FullEmpty) {
+TEST(FIFO, FullEmpty)
+{
   tulips_fifo_t fifo = TULIPS_FIFO_DEFAULT_VALUE;
   tulips_fifo_error_t error;
   /**
@@ -149,7 +155,7 @@ TEST(FIFO, FullEmpty) {
   /**
    * Push success
    */
-  const char * data = "hi to the world!";
+  const char *data = "hi to the world!";
   for (int i = 0; i < 16; i += 1) {
     error = tulips_fifo_push(fifo, data);
     ASSERT_EQ(TULIPS_FIFO_OK, error);
@@ -162,7 +168,7 @@ TEST(FIFO, FullEmpty) {
   /**
    * Front and pop success
    */
-  void * result;
+  void *result;
   for (int i = 0; i < 16; i += 1) {
     error = tulips_fifo_front(fifo, &result);
     ASSERT_EQ(TULIPS_FIFO_OK, error);
@@ -190,7 +196,8 @@ TEST(FIFO, FullEmpty) {
   ASSERT_EQ(TULIPS_FIFO_OK, error);
 }
 
-TEST(FIFO, MultiThread) {
+TEST(FIFO, MultiThread)
+{
   tulips_fifo_t fifo = TULIPS_FIFO_DEFAULT_VALUE;
   tulips_fifo_error_t error;
   /**

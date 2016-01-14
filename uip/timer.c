@@ -1,15 +1,3 @@
-/**
- * \addtogroup timer
- * @{
- */
-
-/**
- * \file
- * Timer library implementation.
- * \author
- * Adam Dunkels <adam@sics.se>
- */
-
 /*
  * Copyright (c) 2004, Swedish Institute of Computer Science.
  * All rights reserved.
@@ -41,15 +29,12 @@
  * This file is part of the uIP TCP/IP stack
  *
  * Author: Adam Dunkels <adam@sics.se>
- *
- * $Id: timer.c,v 1.2 2006/06/12 08:00:30 adam Exp $
  */
 
 #include "clock.h"
 #include "debug.h"
 #include "timer.h"
 
-/*---------------------------------------------------------------------------*/
 /**
  * Set a timer.
  *
@@ -61,13 +46,12 @@
  * \param interval The interval before the timer expires.
  *
  */
-void
-timer_set(struct timer *t, clock_time_t interval)
+void timer_set(struct timer *t, clock_time_t interval)
 {
-  t->interval = interval;
-  t->start = clock_time();
+	t->interval = interval;
+	t->start = clock_time();
 }
-/*---------------------------------------------------------------------------*/
+
 /**
  * Reset the timer with the same interval.
  *
@@ -81,12 +65,11 @@ timer_set(struct timer *t, clock_time_t interval)
  *
  * \sa timer_restart()
  */
-void
-timer_reset(struct timer *t)
+void timer_reset(struct timer *t)
 {
-  t->start += t->interval;
+	t->start += t->interval;
 }
-/*---------------------------------------------------------------------------*/
+
 /**
  * Restart the timer from the current point in time
  *
@@ -101,12 +84,11 @@ timer_reset(struct timer *t)
  *
  * \sa timer_reset()
  */
-void
-timer_restart(struct timer *t)
+void timer_restart(struct timer *t)
 {
-  t->start = clock_time();
+	t->start = clock_time();
 }
-/*---------------------------------------------------------------------------*/
+
 /**
  * Check if a timer has expired.
  *
@@ -118,11 +100,9 @@ timer_restart(struct timer *t)
  * \return Non-zero if the timer has expired, zero otherwise.
  *
  */
-int
-timer_expired(struct timer *t)
+int timer_expired(struct timer *t)
 {
-  return (clock_time_t)(clock_time() - t->start) >= (clock_time_t)t->interval;
+	return clock_time() - t->start >= t->interval;
 }
-/*---------------------------------------------------------------------------*/
 
 /** @} */
