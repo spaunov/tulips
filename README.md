@@ -1,2 +1,2 @@
 # tulips
-Threaded Ultra Low-latency IP Stack
+The Ultra Low-latency IP Stack

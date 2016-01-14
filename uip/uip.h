@@ -64,7 +64,6 @@ typedef struct uip_macaddr {
 
 /**
  * Repressentation of an IP address.
- *
  */
 typedef uint16_t uip_ip4addr_t[2];
 typedef uip_ip4addr_t uip_ipaddr_t;
@@ -109,12 +108,9 @@ struct uip_conn {
   void *  appstate;
 } __attribute__((packed));
 
-#if UIP_STATISTICS
-#define UIP_STAT(s) s
 /**
  * The structure holding the TCP/IP statistics that are gathered if
  * UIP_STATISTICS is set to 1.
- *
  */
 struct uip_stats {
   struct {
@@ -160,16 +156,12 @@ struct uip_stats {
                             triggering a RST. */
   } tcp;                  /**< TCP statistics. */
 } __attribute__((packed));
+
+#ifdef UIP_STATISTICS
+#define UIP_STAT(s) s
 #else
 #define UIP_STAT(s)
 #endif
-
-/**
- * Application callback
- */
-
-struct uip;
-typedef void (*uip_callback_t)(struct uip * uip);
 
 /**
  * Representation of the TCP stack.
@@ -182,7 +174,6 @@ typedef struct uip {
   uint8_t             buf[UIP_BUFSIZE + 2];
   void *              appdata;
   void *              sappdata;
-  uip_callback_t      app;
 #if UIP_URGDATA > 0
   void *              urgdata;
   uint16_t            urglen;
@@ -202,6 +193,14 @@ typedef struct uip {
   struct uip_stats    stat;
 #endif
 } __attribute__((packed)) * uip_t;
+
+/**
+ * The uIP application callback.
+ *
+ * Used by uIP to callback into the application.
+ */
+extern void app_callback(uip_t uip);
+
 
 /**
  * The uIP packet buffer.
@@ -347,7 +346,7 @@ typedef struct uip {
  * This function should be called at boot up to initilize the uIP
  * TCP/IP stack.
  */
-void uip_init(uip_t uip, uip_callback_t app);
+void uip_init(uip_t uip);
 
 /**
  * uIP initialization function.

@@ -360,7 +360,7 @@ newdata(uip_t uip)
 }
 /*-----------------------------------------------------------------------------------*/
 void
-webclient_appcall(uip_t uip)
+app_callback(uip_t uip)
 {
   if(uip_connected(uip)) {
     s.timer = 0;

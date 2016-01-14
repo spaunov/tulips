@@ -177,7 +177,12 @@ unsigned char webclient_get(uip_t uip, char *host, uint16_t port, char *file);
  * Close the currently open HTTP connection.
  */
 void webclient_close(void);
-void webclient_appcall(uip_t uip);
+
+
+/**
+ * Application callback
+ */
+void app_callback(uip_t uip);
 
 /**
  * Obtain the MIME type of the current HTTP data stream.

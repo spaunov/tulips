@@ -61,7 +61,7 @@ main(void)
   timer_set(&arp_timer, CLOCK_SECOND * 10);
 
   tapdev_init();
-  uip_init(uip, webclient_appcall);
+  uip_init(uip);
   uip_arp_init(arp);
 
   uip_ipaddr(ipaddr, 10, 1, 0, 2);
