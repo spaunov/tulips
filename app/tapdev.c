@@ -84,7 +84,7 @@ tapdev_init(void)
   }
 
   snprintf(buf, sizeof(buf), "ifconfig tap0 inet %d.%d.%d.%d",
-	   UIP_DRIPADDR0, UIP_DRIPADDR1, UIP_DRIPADDR2, UIP_DRIPADDR3);
+           UIP_DRIPADDR0, UIP_DRIPADDR1, UIP_DRIPADDR2, UIP_DRIPADDR3);
   system(buf);
 }
 /*---------------------------------------------------------------------------*/

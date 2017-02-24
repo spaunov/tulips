@@ -38,31 +38,31 @@
 
 uint16_t chksum(uint16_t sum, const uint8_t *data, uint16_t len)
 {
-	uint16_t t;
-	const uint8_t *dataptr = data;
-	const uint8_t *last_byte = data + len - 1;
-	/*
-	 * If at least two more bytes.
-	 */
-	while (dataptr < last_byte) {
-		t = (dataptr[0] << 8) + dataptr[1];
-		sum += t;
-		if (sum < t) {
-			sum++;
-		}
-		dataptr += 2;
-	}
-	if (dataptr == last_byte) {
-		t = (dataptr[0] << 8) + 0;
-		sum += t;
-		if (sum < t) {
-			sum++;
-		}
-	}
-	/*
-	 * Return sum in host byte order
-	 */
-	return sum;
+  uint16_t t;
+  const uint8_t *dataptr = data;
+  const uint8_t *last_byte = data + len - 1;
+  /*
+   * If at least two more bytes.
+   */
+  while (dataptr < last_byte) {
+    t = (dataptr[0] << 8) + dataptr[1];
+    sum += t;
+    if (sum < t) {
+      sum++;
+    }
+    dataptr += 2;
+  }
+  if (dataptr == last_byte) {
+    t = (dataptr[0] << 8) + 0;
+    sum += t;
+    if (sum < t) {
+      sum++;
+    }
+  }
+  /*
+   * Return sum in host byte order
+   */
+  return sum;
 }
 
 #endif

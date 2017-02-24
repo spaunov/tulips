@@ -324,7 +324,7 @@ parse_headers(uip_t uip, uint16_t len)
           }
         }
         strncpy(s.file, cptr, sizeof(s.file));
-        /*	s.file[s.httpheaderlineptr - i] = 0;*/
+        /*s.file[s.httpheaderlineptr - i] = 0;*/
       }
 
 

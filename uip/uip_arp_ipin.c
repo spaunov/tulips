@@ -49,19 +49,19 @@
  */
 void uip_arp_ipin(uip_t uip, uip_arp_t arp)
 {
-	uip->len -= sizeof(struct uip_eth_hdr);
-	/*
-	 * Only insert/update an entry if the source IP address of the
-	 * incoming IP packet comes from a host on the local network.
-	 */
-	if ((IPBUF(uip)->srcipaddr[0] & uip->netmask[0]) !=
-	   (uip->hostaddr[0] & uip->netmask[0])) {
-		return;
-	}
-	if ((IPBUF(uip)->srcipaddr[1] & uip->netmask[1]) !=
-	   (uip->hostaddr[1] & uip->netmask[1])) {
-		return;
-	}
-	uip_arp_update(arp, IPBUF(uip)->srcipaddr, &(IPBUF(uip)->ethhdr.src));
+  uip->len -= sizeof(struct uip_eth_hdr);
+  /*
+   * Only insert/update an entry if the source IP address of the
+   * incoming IP packet comes from a host on the local network.
+   */
+  if ((IPBUF(uip)->srcipaddr[0] & uip->netmask[0]) !=
+      (uip->hostaddr[0] & uip->netmask[0])) {
+    return;
+  }
+  if ((IPBUF(uip)->srcipaddr[1] & uip->netmask[1]) !=
+      (uip->hostaddr[1] & uip->netmask[1])) {
+    return;
+  }
+  uip_arp_update(arp, IPBUF(uip)->srcipaddr, &(IPBUF(uip)->ethhdr.src));
 }
 
